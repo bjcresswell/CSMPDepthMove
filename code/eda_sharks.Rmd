@@ -78,8 +78,6 @@ diurnal_sharks <-
   mutate(hour = hour(detection_timestamp)) %>% 
   mutate(tod = case_when(hour %in% (6:18) ~ "Day",
                          TRUE ~ "Night"))
-
-
 ```
 
 
@@ -96,8 +94,9 @@ diurnal_sharks %>%
 ```{r}
 diurnal_sharks %>% 
   ggplot() +
-    geom_point(aes(x = detection_timestamp, y = Temp)) +
-    facet_wrap(~tod)
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  geom_point(aes(x = time, y = temp), data = SSTcomb, colour = "blue") +
+  facet_wrap(~tod)
 ```
 
 
