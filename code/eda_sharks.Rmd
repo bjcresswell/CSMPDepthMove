@@ -36,37 +36,58 @@ library(tidyverse)
 # Load shark and teleost T/P data
 ```{r}
 load(file = "../data/Rdata/shark_tp_data.Rdata")
-load(file = "../data/Rdata/teleost_tp_data.Rdata")
 ```
 
-
-
-```{r}
-teleost_tp_data %>% 
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Depth)) +
-  facet_wrap(~transmitter_id)
-```
-
-```{r}
-teleost_tp_data %>% 
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Depth)) +
-  scale_y_reverse()
-```
-
-
+# Temp overview
 ```{r}
 shark_tp_data %>% 
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Temp)) +
   facet_wrap(~ transmitter_id)
 ```
+Pattern seems replicated by majority of individuals
 
+# Depth overview
 ```{r}
 shark_tp_data %>% 
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse() +
+  facet_wrap(~transmitter_id)
+```
+Same with depth - pattern replicated by most individuals. 
+Interesting to look at #14049 who didn't make as many deep moves and whose overall temperatures look higher than the others.
+
+# Tease out max depths per day/week
+```{r}
+shark_dailydep <- 
+shark_tp_data %>% 
+  mutate(date = as_date(detection_timestamp)) %>% 
+  group_by(transmitter_id, date) %>% 
+  filter(!is.na(Depth)) %>% 
+  summarise(daily_max_depth = max(Depth))
+
+shark_weeklydep <- 
+shark_dailydep %>% 
+  mutate(week = week(date),
+         year = year(date)) %>% 
+  mutate(year_week = paste(year, week)) %>% 
+  group_by(transmitter_id, year_week) %>% 
+  summarise(weekly_max_depth = max(daily_max_depth)) #%>% 
+  arrange(year)
+```
+
+# And plot
+```{r}
+shark_dailydep %>% 
+  ggplot() +
+  geom_point(aes(x = date, y = daily_max_depth)) +
+  scale_y_reverse() +
+  facet_wrap(~transmitter_id)
+
+shark_weeklydep %>% 
+  ggplot() +
+  geom_point(aes(x = year_week, y = weekly_max_depth)) +
   scale_y_reverse() +
   facet_wrap(~transmitter_id)
 ```
