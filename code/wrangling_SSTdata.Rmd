@@ -1,0 +1,104 @@
+---
+title: "Calibrating sensor data"
+aauthor: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load required packages
+```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+# Housekeeping
+```{r warning=FALSE}
+rm(list=ls()) # Clear out environment if necessary
+```
+
+SST data downloaded from the GIOVANNI portal
+
+
+
+
+
+Need to trim to dates for detections
+
+```{r}
+shark_tp_data %>% 
+  summarise(min(detection_timestamp), max(detection_timestamp))
+```
+So start end of October 2021 and go until late Feb 2023.
+
+## Nighttime 11 micron dataset
+```{r load-SST11, message=FALSE, warning=FALSE}
+SST11mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_NSST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', 
+                     skip = 7) %>% 
+  rename(temp = "MODISA_L3m_NSST_8d_4km_R2019_0_sst") %>% 
+  filter(temp >0,
+         as_date(time) >= as_date("2021-10-20"))
+```
+
+## Nighttime 4 micron dataset
+```{r load-SST4, message=FALSE, warning=FALSE}
+SST4mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST4_8d_4km_R2019_0_sst4.20211019-20230305.146E_13S_146E_13S.csv', 
+                     skip = 7) %>% 
+  rename(temp = "MODISA_L3m_SST4_8d_4km_R2019_0_sst4") %>% 
+  filter(temp >0,
+          as_date(time) >= as_date("2021-10-20"))
+```
+
+## Daytime 11 micron dataset
+```{r load-SST11day, message=FALSE, warning=FALSE}
+SST11micday <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', 
+                     skip = 7) %>% 
+  rename(temp = "mean_MODISA_L3m_SST_8d_4km_R2019_0_sst") %>% 
+  filter(temp >0,
+          as_date(time) >= as_date("2021-10-20"))
+```
+
+## Plot
+```{r}
+ggplot() +
+  geom_point(aes(x = time, y = temp), data = SST4mic, colour = "blue") +
+  geom_line(aes(x = time, y = temp), data = SST4mic, colour = "blue") +
+  geom_point(aes(x = time, y = temp), data = SST11mic, colour = "red") +
+  geom_line(aes(x = time, y = temp), data = SST11mic, colour = "red") +
+  geom_point(aes(x = time, y = temp), data = SST11micday, colour = "yellow") +
+  geom_line(aes(x = time, y = temp), data = SST11micday, colour = "yellow") +
+  theme_minimal()
+```
+
+
+```{r}
+SSTcomb <- 
+  full_join(SST4mic, SST11mic) %>% 
+  full_join(SST11micday)
+```
+
+
+```{r}
+ggplot() +
+  geom_point(aes(x = time, y = temp), data = SSTcomb, colour = "blue") +
+  geom_line(aes(x = time, y = temp), data = SSTcomb, colour = "blue")
+```
+
+
+
