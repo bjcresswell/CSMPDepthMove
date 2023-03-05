@@ -26,6 +26,7 @@ This Rmd takes detection data from a/many Vue database(s), previously exported t
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 rm(list=ls())
+getwd()
 ```
 
 # Load required packages
@@ -64,13 +65,13 @@ Lastly, if you want to utilise the Animal Tracking Toolbox component of the vTra
 # STEP 1: Loading base detection data and combining with receiver metadata
 
 
-## Deployment 2 (Oct 2021 - Feb 2022)
+## Deployment 2 (Oct 2021 - Feb 2022 -> CSMP and BJC)
 
 ## Load detection database 2
-```{r load-dep2}
-data_dep2 <- read_excel('../data/CSMPdb_uncal_202203.xlsx') %>% 
+```{r load-dep2, message=FALSE, warning=FALSE}
+data_dep2 <- read_csv('../data/CSMPdb_uncal_202203.csv') %>% 
   tibble() %>% # Make into tibble format
-  mutate(detection_timestamp = lubridate::as_datetime(DTG), .keep='unused', .before='Receiver') # %>%  # Sort out date-time column early
+  mutate(detection_timestamp = lubridate::as_datetime(DTG), .keep='unused', .before='Receiver')  %>%  # Sort out date-time column early
   dplyr::select(c(1,2,3,6,7)) %>% # Get rid of unused columns
   mutate_if(is.character, as.factor) %>% # Sort out variables
   mutate(receiver_name = Receiver, # Change some column names for merging below
@@ -78,16 +79,10 @@ data_dep2 <- read_excel('../data/CSMPdb_uncal_202203.xlsx') %>%
          .keep = 'unused')
 ```
 
-```{r}
-head(data_dep2)
-data_dep2 %$% 
-  tibble(unique(receiver_name))
-```
-
 # Do max and min dates make sense
 ```{r}
 data_dep2 %$% 
-  summary(as_datetime(DTG))
+  summary(as_datetime(detection_timestamp))
 ```
 
 ## List of receivers for deployment 2
@@ -98,36 +93,10 @@ vr2ws_dep2 <- read_excel('../data/receiver_list_dep2.xlsx', trim_ws = TRUE) %>%
   mutate_if(is.character, as.factor) # Sort out variables
 ```
 
-```{r}
-vr2ws_dep2 %$% 
-    tibble(unique(receiver_name))
-```
-
-VR2W-133516				
-VR2W-133517				
-VR2W-137056				
-VR2W-137694				
-VR2W-137047				
-VR2W-137048				
-VR2W-137693				
-VR2W-133521				
-VR2W-133522				
-VR2W-137049
-VR2W-137050				
-VR2W-137051				
-VR2W-137054				
-VR2W-133520				
-VR2W-137052				
-VR2W-137053				
-VR2W-133519				
-VR2W-133518				
-VR2W-133515
-
-
 ## Combine deployment 2
 ```{r}
 osprey_dep2 <- data_dep2 %>%  
-  left_join(vr2ws_dep2, by='receiver_name') #%>% 
+  left_join(vr2ws_dep2, by='receiver_name') %>% 
   filter(installation_name == "Osprey")
 ```
 
@@ -143,13 +112,13 @@ osprey_dep2 %$%
   summary(detection_timestamp)
 ```
 
-## Deployment 3 (Oct 2021 - Oct 2022 -> BJC units)
+## Deployment 3 (Oct 2021 - Oct 2022 -> BJC only)
 
 ## Load detection database 3
 ```{r load-dep1}
-data_dep3 <- read.csv('../data/CSMPdb_uncal_202210.csv') %>% 
+data_dep3 <- read_csv('../data/CSMPdb_uncal_202210.csv') %>% 
   tibble() %>% # Make into tibble format
-  mutate(detection_timestamp=as_datetime(DTG), .keep='unused', .before='Receiver') #%>%  # Sort out date-time column early
+  mutate(detection_timestamp = as_datetime(DTG), .keep = 'unused', .before = 'Receiver') %>%  # Sort out date-time column early
   dplyr::select(c(1,2,3,6,7)) %>% # Get rid of unrequired columns
   mutate_if(is.character, as.factor) %>% # Sort out variables
   mutate(receiver_name = Receiver, # Change some column names for merging below
@@ -179,17 +148,40 @@ osprey_dep3 %$%
 ```
 
 
+## Deployment 4 (Feb 2022 - Feb 2023 -> CSMP only)
 
-# Something wrong with this
-```{r}
-osprey_dep3 %>% 
-  filter(detection_timestamp < '2020-01-01 22:07:31.0000') %$% 
-  summary(receiver_name)
-
-
+## Load detection database 4
+```{r load-dep1}
+data_dep4 <- read_csv('../data/CSMPdb_uncal_202303.csv') %>% 
+  tibble() %>% # Make into tibble format
+  mutate(detection_timestamp = as_datetime(DTG), .keep = 'unused', .before = 'Receiver') %>%  # Sort out date-time column early
+  dplyr::select(c(1,2,3,6,7)) %>% # Get rid of unrequired columns
+  mutate_if(is.character, as.factor) %>% # Sort out variables
+  mutate(receiver_name = Receiver, # Change some column names for merging below
+         transmitter_id = Transmitter,
+         .keep = 'unused')
 ```
 
+## List of receivers for deployment 4
+```{r}
+# Load list of receivers
+vr2ws_dep4 <- read_excel('../data/receiver_list_dep4.xlsx', trim_ws = TRUE) %>%
+  tibble() %>% # Make into tibble format
+  mutate_if(is.character, as.factor) # Sort out variables
+```
 
+## Combine deployment 4
+```{r}
+osprey_dep4 <- data_dep4 %>%  
+  merge(vr2ws_dep4, by='receiver_name') %>% 
+  filter(installation_name == "Osprey")
+```
+
+# Check that max and min dates make sense
+```{r}
+osprey_dep4 %$% 
+  summary(detection_timestamp)
+```
 
 
 
@@ -204,8 +196,10 @@ glimpse(data_dep4)
 Both have the same columns so..
 
 ## Combine into master df
+At the same time we'll remove all non-T/P tag detections
 ```{r}
-alldata <- rbind(data_dep1, data_dep2)
+alldata <- rbind(data_dep2, data_dep3, data_dep4) %>% 
+  filter(!is.na(`Sensor Value`))
 summary(alldata)
 ```
 Looking good - nearly 1.3million detections over the year period.
@@ -242,6 +236,7 @@ raw_detected_tags <- alldata %>%
 raw_detected_tags %$%
   summary(Location)
 ```
+So all from Osprey
 
 ## Save as RData
 ```{r}
@@ -255,8 +250,15 @@ raw_detected_tags %$%
 alldata <- alldata %>% 
   merge(regional_tag_list, by='transmitter_id', all.x = TRUE) %>% 
   droplevels()
-glimpse(alldata)
+```
 
+
+```{r}
+glimpse(alldata)
+```
+
+
+```{r}
 alldata %>% 
   group_by(transmitter_id, Location) %>% 
   distinct() %$% 
@@ -270,7 +272,7 @@ str(alldata$transmitter_id)
 ```{r}
 sensor_data <- 
   alldata %>% 
-  filter(!is.na(Sensor.Value)) %>% 
+  filter(!is.na(`Sensor Value`)) %>% 
   droplevels()
 
 save(sensor_data, file = "../data/RData/sensor_data.RData")
@@ -323,11 +325,6 @@ shark_press_data <-
   filter(Org_type == "Elasmobranch") %>% 
   filter(Type =="press") 
 
-
-shark_sensor_data <- 
-  shark_press_data %>% 
-  bind_rows(shark_temp_data)
-
 ```
 
 # Teleosts
@@ -345,77 +342,19 @@ teleost_press_data <-
   filter(Org_type == "Teleost") %>% 
   filter(Type =="press") 
 
-
-teleost_sensor_data <- 
-  teleost_press_data %>% 
-  bind_rows(teleost_temp_data)
-
 ```
 
-# Combine back together again
 
+## Now that temp and pressure data are split out we can calculate calibrated values for the raw data - see wrangling_sensordata.Rmd
+For now let's save these four dataframes
 ```{r}
-our_sensor_data1 <- 
-  teleost_sensor_data %>% 
-  bind_rows(shark_sensor_data)
+save(shark_temp_data, file = "../data/Rdata/shark_temp_data.Rdata")
+save(shark_press_data, file = "../data/Rdata/shark_press_data.Rdata")
+save(teleost_temp_data, file = "../data/Rdata/teleost_temp_data.Rdata")
+save(teleost_press_data, file = "../data/Rdata/teleost_press_data.Rdata")
 ```
 
 
-# Check
-```{r}
-our_sensor_data1 %>% 
-  dplyr::select(transmitter_id, ID, Type, Serial) %>% 
-  arrange(ID) %>% 
-  distinct
-
-our_sensor_data %>% 
-  dplyr::select(transmitter_id, ID, Type, Serial) %>% 
-  arrange(ID) %>% 
-  distinct
-```
-
-# Now need to add back in the ones that are not from our project
-
-```{r}
-sensor_data1 <- 
-  our_sensor_data1 %>% 
-  bind_rows(other_sensor_data)
-```
-
-# chop out the original sensor data from alldata
-```{r}
-alldata1 <- 
-  alldata %>% 
-  filter(is.na(Sensor.Value)) %>% 
-  droplevels() %>% 
-  bind_rows(sensor_data1)
-```
-
-# Check
-```{r}
-alldata1 %>% 
-  dplyr::select(transmitter_id) %>% 
-  arrange(transmitter_id) %>% 
-  distinct
-
-alldata %>% 
-  dplyr::select(transmitter_id) %>% 
-  arrange(transmitter_id) %>% 
-  distinct
-```
-
-# Once happy, reassign to main df name
-```{r}
-alldata <- alldata1
-```
-
-## NOTE FOR FUTURE -> SHOULD RELEVEL INSTALLATION NAME HERE AT SOME POINT IN THE FUTURE (IE REEFS = NORTH TO SOUTH)
 
 
 
-
-## And save for use elsewhere/later
-```{r}
-#save(alldata, file = "../data/RData/alldata.RData")
-as.tibble(colnames(alldata))
-```
