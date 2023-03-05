@@ -1,0 +1,158 @@
+---
+title: "Calibrating sensor data"
+aauthor: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load required packages
+```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+# Housekeeping
+```{r warning=FALSE}
+rm(list=ls()) # Clear out environment if necessary
+```
+
+We start with the four separate files for teleosts and sharks, temperature and pressure as there are difference calibration values for each:
+
+
+# Sharks #        
+
+    Slope	    Intercept
+P   0.9097	  -3.6388
+T   0.1575	  -5.157
+
+## Load shark data
+```{r}
+load(file = "../data/Rdata/shark_press_data.Rdata")
+load(file = "../data/Rdata/shark_temp_data.Rdata")
+```
+
+## Calculate shark depth
+```{r}
+shark_press_data <- 
+  shark_press_data %>% 
+  mutate(Depth = `Sensor Value`*0.9097 - 3.6388)
+```
+
+## Calculate shark temperature
+```{r}
+shark_temp_data <- 
+  shark_temp_data %>% 
+  mutate(Temp = `Sensor Value`*0.1575 - 5.157)
+```
+
+
+# Combine together so that temp and depth in the same dataframes
+
+## Combine sharks
+```{r}
+shark_tp_data <- 
+  shark_temp_data %>% 
+  full_join(shark_press_data) %>% 
+  select(transmitter_id, detection_timestamp, receiver_name, Scientific_name, Date, 
+         Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
+  arrange(detection_timestamp)
+```
+
+## Checks
+
+### General
+```{r}
+shark_tp_data # 737000 observations
+```
+
+### How many individuals detected
+```{r}
+shark_tp_data %>% 
+  filter(transmitter_id != 0) %>% 
+  droplevels() %$% 
+  summary(transmitter_id)
+```
+All 15 sharks with T/P tags show up at some point
+
+### Check one or two individuals for both depth and temp
+```{r}
+shark_tp_data %>% 
+  filter(transmitter_id == "A69-9004-14037") %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse()
+
+shark_tp_data %>% 
+  filter(transmitter_id == "A69-9004-14037") %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) 
+```
+
+##################
+
+
+# Teleosts #
+
+     Slope	    Intercept
+P    0.6065	  -2.4258
+T    0.1575	  -5.157
+
+## Load teleost data
+```{r}
+load(file = "../data/Rdata/teleost_press_data.Rdata")
+load(file = "../data/Rdata/teleost_temp_data.Rdata")
+```
+
+## Calculate teleost depth
+```{r}
+teleost_press_data <- 
+  teleost_press_data %>% 
+  mutate(Depth = `Sensor Value`*0.6065 - 2.4258)
+```
+
+## Calculate teleost temperature
+```{r}
+teleost_temp_data <- 
+  teleost_temp_data %>% 
+  mutate(Temp = `Sensor Value`*0.1575 - 5.157)
+```
+
+
+## Combine teleosts
+```{r}
+teleost_tp_data <- 
+  teleost_temp_data %>% 
+  full_join(teleost_press_data) %>% 
+  select(transmitter_id, detection_timestamp, receiver_name, Scientific_name, Date, 
+         Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
+  arrange(detection_timestamp)
+```
+
+
+
+
+```{r}
+save(shark_tp_data, file = "../data/Rdata/shark_tp_data.Rdata")
+save(teleost_tp_data, file = "../data/Rdata/teleost_tp_data.Rdata")
+```
+
+
+
+
