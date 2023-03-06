@@ -18,7 +18,6 @@ editor_options:
   chunk_output_type: inline
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -36,74 +35,67 @@ rm(list=ls()) # Clear out environment if necessary
 
 ROV records temperature and depth as part of its deployment metadata log. We have a number of deployments at Osprey Reef, from 
 
-
 ## Load
-### Dive 1 from Deployment 22-02-2023, from 97 - 22m
-```{r load-dep2, message=FALSE, warning=FALSE}
-osplog2023_D1 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
+### Deployment 22-02-2023 - Osprey North Horn - Dive 1 97m -> surface
+```{r load-dep2023i, message=FALSE, warning=FALSE}
+NHorn2023_D1 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2) %>% 
   filter(Time > parse_hms("08:39:00")) %>%  # Beginning of the first 90m+ transect
   filter(Time < parse_hms("08:59:00"))  # End of dive
 ```
 
-### Dive 2 from Deployment 22-02-2023, from 97 - 22m
-```{r load-dep2, message=FALSE, warning=FALSE}
-osplog2023_D2 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
+### Deployment 22-02-2023 - Osprey North Horn - Dive 2, 49m -> surface
+```{r load-dep2023ii, message=FALSE, warning=FALSE}
+NHorn2023_D2 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2) %>% 
   filter(Time > parse_hms("09:11:30")) %>%  # Beginning of the first 90m+ transect
   filter(Time < parse_hms("09:35:00"))  # End of dive
 ```
 
+### Deployment 23-01-2021 - Osprey Entrance - Dive 1 95m - surface
+```{r load-dep2021i, message=FALSE, warning=FALSE}
+OspEnt2021 <- read_csv('../data/ROV/2021-02-23 11-32-50 vehicle1.csv') %>% 
+  mutate(Time = as_hms(clock.currentTime)) %>% 
+  select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
+  filter(Time > parse_hms("12:02:30")) %>%  # Beginning of the first 95m+ transect
+  filter(Time < parse_hms("13:20:30"))  # End of dive
+```
 
+### Deployment 24-01-2021 - Osprey North Horn - Dive 1 50m - surface
+```{r load-dep2021, message=FALSE, warning=FALSE}
+NHorn2021_D1 <- read_csv('../data/ROV/2021-02-24 07-43-14 vehicle1.csv') %>% 
+  mutate(Time = as_hms(clock.currentTime)) %>% 
+  select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
+  filter(Time > parse_hms("09:08:30"))  %>%  # Beginning of the first ~50m transect
+  filter(Time < parse_hms("09:40:30"))  # End of dive
+```
 
-```{r}
-  ggplot() +
-  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = osplog2023_D1) +
-  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = osplog2023_D2) +
-  scale_x_continuous(limits = c(27,31))
+### Deployment 24-01-2021 - Osprey North Horn - Dive 2 9
+```{r load-dep2021, message=FALSE, warning=FALSE}
+NHorn2021_D2 <- read_csv('../data/ROV/2021-02-24 10-59-22 vehicle1.csv') %>% 
+  mutate(Time = as_hms(clock.currentTime)) %>% 
+  select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
+  filter(Time > parse_hms("11:28:00"))  %>%  # Beginning of the first ~50m transect
+  filter(Time < parse_hms("12:22:30"))  # End of dive
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-ggplot() +
-  geom_point(aes(x = time, y = temp), data = SST4mic, colour = "blue") +
-  geom_line(aes(x = time, y = temp), data = SST4mic, colour = "blue") +
-  geom_point(aes(x = time, y = temp), data = SST11mic, colour = "red") +
-  geom_line(aes(x = time, y = temp), data = SST11mic, colour = "red") 
-```
-
-
-```{r}
-SSTcomb <- 
-  full_join(SST4mic, SST11mic)
-```
-
-
+#### Temp vs depth 
 ```{r}
 ggplot() +
-  geom_point(aes(x = time, y = temp), data = SSTcomb, colour = "blue") +
-  geom_line(aes(x = time, y = temp), data = SSTcomb, colour = "blue")
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2021_D2, colour = 'cyan') +
+  #geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = OspEnt2021, colour = 'deepskyblue') +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D1, colour = 'palegreen') +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D2, colour = 'palegreen') +
+  scale_x_continuous(limits = c(25,31))
 ```
+
+
+
+
+
 
 
 

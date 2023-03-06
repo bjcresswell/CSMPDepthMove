@@ -188,9 +188,9 @@ osprey_dep4 %$%
 
 ## Quick check to make sure everything looking ok
 ```{r}
-glimpse(data_dep2)
-glimpse(data_dep3)
-glimpse(data_dep4)
+glimpse(osprey_dep2)
+glimpse(osprey_dep3)
+glimpse(osprey_dep4)
 ```
 
 Both have the same columns so..
@@ -198,11 +198,10 @@ Both have the same columns so..
 ## Combine into master df
 At the same time we'll remove all non-T/P tag detections
 ```{r}
-alldata <- rbind(data_dep2, data_dep3, data_dep4) %>% 
+alldata <- rbind(osprey_dep2, osprey_dep3, osprey_dep4) %>% 
   filter(!is.na(`Sensor Value`))
 summary(alldata)
 ```
-Looking good - nearly 1.3million detections over the year period.
 Now we have a whole data file, we can combine with information about tagged animal details (for animals that we have info for)
 
 

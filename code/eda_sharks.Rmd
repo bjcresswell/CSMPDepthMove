@@ -52,7 +52,7 @@ Pattern seems replicated by majority of individuals
 shark_tp_data %>% 
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Depth)) +
-  scale_y_reverse() +
+  scale_y_reverse() 
   facet_wrap(~transmitter_id)
 ```
 Same with depth - pattern replicated by most individuals. 

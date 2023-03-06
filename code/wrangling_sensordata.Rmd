@@ -70,7 +70,7 @@ shark_temp_data <-
 shark_tp_data <- 
   shark_temp_data %>% 
   full_join(shark_press_data) %>% 
-  select(transmitter_id, detection_timestamp, receiver_name, Scientific_name, Date, 
+  select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date, 
          Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
   arrange(detection_timestamp)
 ```
@@ -140,7 +140,7 @@ teleost_temp_data <-
 teleost_tp_data <- 
   teleost_temp_data %>% 
   full_join(teleost_press_data) %>% 
-  select(transmitter_id, detection_timestamp, receiver_name, Scientific_name, Date, 
+  select(transmitter_id, detection_timestamp, station_name, Scientific_name, Date, 
          Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
   arrange(detection_timestamp)
 ```
