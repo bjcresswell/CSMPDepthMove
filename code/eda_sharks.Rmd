@@ -36,24 +36,28 @@ library(tidyverse)
 # Load shark and teleost T/P data
 ```{r}
 load(file = "../data/Rdata/shark_tp_data.Rdata")
+shark_tp_data
 ```
 
 # Temp overview
-```{r}
+```{r shark_t_eda1, fig.width=16, fig.height=6}
 shark_tp_data %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Temp)) +
-  facet_wrap(~ transmitter_id)
+  facet_wrap(~ station_name)
+
 ```
 Pattern seems replicated by majority of individuals
 
 # Depth overview
 ```{r}
 shark_tp_data %>% 
+  filter(station_name_long == 'Lagoon_2')# %>% # Just looking at Silver City for now as it is the only one with observations for the whole period
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Depth)) +
-  scale_y_reverse() 
-  facet_wrap(~transmitter_id)
+  scale_y_reverse()  +
+  facet_wrap(~station_name)
 ```
 Same with depth - pattern replicated by most individuals. 
 Interesting to look at #14049 who didn't make as many deep moves and whose overall temperatures look higher than the others.
@@ -63,7 +67,7 @@ Interesting to look at #14049 who didn't make as many deep moves and whose overa
 shark_dailydep <- 
 shark_tp_data %>% 
   mutate(date = as_date(detection_timestamp)) %>% 
-  group_by(transmitter_id, date) %>% 
+  group_by(date, station_name_long) %>% 
   filter(!is.na(Depth)) %>% 
   summarise(daily_max_depth = max(Depth))
 
@@ -72,7 +76,7 @@ shark_dailydep %>%
   mutate(week = week(date),
          year = year(date)) %>% 
   mutate(year_week = paste(year, week)) %>% 
-  group_by(transmitter_id, year_week) %>% 
+  group_by(year_week, station_name_long) %>% 
   summarise(weekly_max_depth = max(daily_max_depth)) #%>% 
   arrange(year)
 ```
@@ -80,16 +84,18 @@ shark_dailydep %>%
 # And plot
 ```{r}
 shark_dailydep %>% 
+  filter(station_name_long == 'Silver_City') %>% # Just looking at Silver City for now as it is the only one with observations for the whole period
   ggplot() +
   geom_point(aes(x = date, y = daily_max_depth)) +
-  scale_y_reverse() +
-  facet_wrap(~transmitter_id)
+  scale_y_reverse() 
+ # facet_wrap(~transmitter_id)
 
 shark_weeklydep %>% 
+  filter(station_name_long == 'Silver_City') %>% # Just looking at Silver City for now as it is the only one with observations for the whole period
   ggplot() +
   geom_point(aes(x = year_week, y = weekly_max_depth)) +
-  scale_y_reverse() +
-  facet_wrap(~transmitter_id)
+  scale_y_reverse() 
+ # facet_wrap(~transmitter_id)
 ```
 
 

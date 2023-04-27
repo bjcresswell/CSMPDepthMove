@@ -48,6 +48,9 @@ Dep2. Oct 2021 - Feb 2022: 7 x receivers (CSMP)
 Dep3. Oct 2021 - Oct 2022: 7 x receivers (BJC)
 Dep4. Feb 2022 - Feb 2023: 7 x receivers (CSMP)
 
+Plus:
+
+Dep4a. Feb2022 - Feb2023
 
 
 # INITIAL WRANGLING #
@@ -96,7 +99,7 @@ vr2ws_dep2 <- read_excel('../data/receiver_list_dep2.xlsx', trim_ws = TRUE) %>%
 ## Combine deployment 2
 ```{r}
 osprey_dep2 <- data_dep2 %>%  
-  left_join(vr2ws_dep2, by='receiver_name') %>% 
+  merge(vr2ws_dep2, by='receiver_name') %>% 
   filter(installation_name == "Osprey")
 ```
 
@@ -106,7 +109,7 @@ osprey_dep2 <- data_dep2 %>%
 glimpse(osprey_dep2)
 ```
 
-# Do max and min dates make sense
+# Do max and min dates make sense?
 ```{r}
 osprey_dep2 %$% 
   summary(detection_timestamp)
@@ -162,7 +165,42 @@ data_dep4 <- read_csv('../data/CSMPdb_uncal_202303.csv') %>%
          .keep = 'unused')
 ```
 
-## List of receivers for deployment 4
+## Add in data-recovery files from Vemco
+```{r load-dep1}
+data_dep4a <- read_csv('../data/CSMPdb_data-recovery-2023-04.csv') %>% 
+  tibble() %>% # Make into tibble format
+  mutate(detection_timestamp = as_datetime(`Date and Time (UTC)`), .keep = 'unused', .before = 'Receiver') %>%  # Sort out date-time column early
+  dplyr::select(c(1,2,3,6,7)) %>% # Get rid of unrequired columns
+  mutate_if(is.character, as.factor) %>% # Sort out variables
+  mutate(receiver_name = Receiver, # Change some column names for merging below
+         transmitter_id = Transmitter,
+         .keep = 'unused')
+```
+## Some checks on the "missing" data
+
+## See when each one at Osprey crapped out
+```{r}
+
+data_dep4 %>% 
+  group_by(receiver_name) %>% 
+  summarise(max_date = max(detection_timestamp))
+
+data_dep4a %>% 
+  group_by(receiver_name) %>% 
+  summarise(max_date = max(detection_timestamp))
+```
+
+
+## Combine two files for one consolidated deployment 4 file.
+```{r}
+data_dep4 <- data_dep4 %>% 
+  bind_rows(data_dep4a)
+rm(data_dep4a)
+```
+
+
+
+## List of receivers for deployment 4 (covers both the main file and the recovered data)
 ```{r}
 # Load list of receivers
 vr2ws_dep4 <- read_excel('../data/receiver_list_dep4.xlsx', trim_ws = TRUE) %>%
@@ -182,125 +220,99 @@ osprey_dep4 <- data_dep4 %>%
 osprey_dep4 %$% 
   summary(detection_timestamp)
 ```
-
-
-
-
-## Quick check to make sure everything looking ok
+## Check when each crapped out at Osprey
 ```{r}
-glimpse(osprey_dep2)
-glimpse(osprey_dep3)
-glimpse(osprey_dep4)
+osprey_dep4 %>% 
+  group_by(station_name_long) %>% 
+  summarise(first_detection = min(detection_timestamp),
+            last_detection = max(detection_timestamp)) %>% 
+  mutate(deploy_duration = round(last_detection - first_detection, 0))
 ```
 
-Both have the same columns so..
 
-## Combine into master df
+
+## Combine all 3 deployments together
 At the same time we'll remove all non-T/P tag detections
 ```{r}
-alldata <- rbind(osprey_dep2, osprey_dep3, osprey_dep4) %>% 
-  filter(!is.na(`Sensor Value`))
-summary(alldata)
+osp_sens_data <- rbind(osprey_dep2, osprey_dep3, osprey_dep4) %>% 
+  filter(!is.na(`Sensor Value`)) %>% 
+  droplevels()
+summary(osp_sens_data$station_name) 
 ```
 Now we have a whole data file, we can combine with information about tagged animal details (for animals that we have info for)
+
+
+```{r}
+osp_sens_data %>% 
+  group_by(station_name_long) %>% 
+  summarise(first_detection = min(detection_timestamp),
+            last_detection = max(detection_timestamp)) %>% 
+  mutate(deploy_duration = round(last_detection - first_detection, 0))
+
+```
+
 
 
 
 # STEP 2:  Animal/tag information
 
-At this stage we will only be able to figure out the identities of animals we've tagged in this study (or in Adam's other work in region)
-Others will be identifiable through the IMOS database later on.
+Need to add in information about animals (not just transmitter_id etc)
 
-## Load the list of known tags deployed in QLD/GBR/CSMP region
-The following chunk runs a separate script to import files relating to both sharks and teleosts tagged in the regions (From Adam's master list) and combines to make one database of tagged animals ("regional_tag_list):
-```{r warning=FALSE}
-source("regional_tag_list.R", local = knitr::knit_global())
-rm("regional_shark_list", "regional_teleost_list") # Remove the individual shark and teleost lists as we don't need them separately (for now)
-```
-
-## Check
-```{r}
-glimpse(regional_tag_list)
-```
-
-Nearly 600 animals tagged in this list and a variety of taxa. Some of these will appear in the CSMP database and obviously others will not. We can extract the animal information from this dataframe (e.g. spp, date tagged etc) to add to our master database. 
-
-## From this list we'll extract all the known regional tags that are in our detection database
-```{r}
-raw_detected_tags <- alldata %>% 
-  distinct(transmitter_id) %>% 
-  merge(regional_tag_list) %>% 
-  droplevels()
-
-raw_detected_tags %$%
-  summary(Location)
-```
-So all from Osprey
-
-## Save as RData
-```{r}
-#save(raw_detected_tags, file = "../data/RData/raw_detected_tags.RData")
-```
-
-
-
-## Combine animal info into main df
-```{r}
-alldata <- alldata %>% 
-  merge(regional_tag_list, by='transmitter_id', all.x = TRUE) %>% 
-  droplevels()
-```
-
-
-```{r}
-glimpse(alldata)
-```
-
-
-```{r}
-alldata %>% 
-  group_by(transmitter_id, Location) %>% 
-  distinct() %$% 
-  summary(Location)
-str(alldata$transmitter_id)
-```
-
-# Final step - merge detections for sensor tags into one transmitter_ID 
-- Need to do this for the main analysis but let's split off sensor data into a separate df so we can analyse that elsewhere..
-
-```{r}
-sensor_data <- 
-  alldata %>% 
-  filter(!is.na(`Sensor Value`)) %>% 
-  droplevels()
-
-save(sensor_data, file = "../data/RData/sensor_data.RData")
-write_csv(sensor_data, file = "../data/RData/sensor_data.csv")
-```
-
-
-### Going to need the project tag list to see which ones are ours..
+## For this information we need to load our project tag list
 ```{r load-proj-tags, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
 source("../code/project_tag_list.R")
 ```
 
+Have got 137 tagged animals in the Coral Sea. 
 
-## Split up sensor data
+## Can filter from this list to see how many animals had sensor tags (all of which will be at Osprey)
 ```{r}
-# Grab out just our own organisms (don't want to do any manipulations on the others - we don't know what tags go with what other tags, if any)
-our_sensor_data <- 
-sensor_data %>% 
-  merge(project_tags_all[11], by = "transmitter_id")
+project_tags_all %>% 
+  droplevels() %>% 
+  #filter(Type != "pinger") %$% 
+  filter(Type == "temp")  %$% 
+  summary(Scientific_name)
 
-# And the sensor tags that we don't own (we'll add these back in to the main alldata df)
-other_sensor_data <- 
-  sensor_data %>% 
-  anti_join(our_sensor_data, by = "transmitter_id")
 ```
+
+We have 10 teleosts and 15 sharks - 25 total. Each has a temp and press transmitter_id so we should have 50 show up in our detections:
+```{r}
+osp_sens_data %>% 
+  distinct(transmitter_id) %>% 
+  merge(project_tags_all) %>% 
+  droplevels() %$%
+  summary(Location)
+```
+
+Only have 46, which means we are missing two animals. Will figure out which ones later.
+
+
+## Combine animal info into main df
+```{r}
+osp_sens_data <- osp_sens_data %>% 
+  merge(project_tags_all, by='transmitter_id', all.x = TRUE) %>% 
+  droplevels() %>% 
+  filter(!is.na(Org_type)) # If we don't know this then it's not an animal that we have tagged (could filter on other variables)
+```
+
+
+## Save
+
+```{r}
+
+
+
+```
+
+
+
+
+
+
 
 ## Assign just one transmitter id to each sensor tag
 ```{r}
-our_sensor_data %>% 
+alldata1 %>% 
   dplyr:: select(transmitter_id, Serial, Org_type, Type) %>% 
   distinct()
 ```
