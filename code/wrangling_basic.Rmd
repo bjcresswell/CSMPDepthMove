@@ -299,9 +299,7 @@ osp_sens_data <- osp_sens_data %>%
 ## Save
 
 ```{r}
-
-
-
+save(osp_sens_data, file = "../data/Rdata/osp_sens_data.Rdata")
 ```
 
 
@@ -310,9 +308,16 @@ osp_sens_data <- osp_sens_data %>%
 
 
 
+####
+
+# Move the below into sensor wrangling script
+
+
+
+
 ## Assign just one transmitter id to each sensor tag
 ```{r}
-alldata1 %>% 
+osp_sens_data %>% 
   dplyr:: select(transmitter_id, Serial, Org_type, Type) %>% 
   distinct()
 ```
@@ -320,40 +325,6 @@ Sharks: a lower-even ID for temp goes with a higher-odd ID for press: Need to +1
 Teleosts: a lower-odd ID for temp goes with a higher-even ID for press: Need to +1 to every temp/odd ID
 
 # Need to filter this out then...
-
-# Sharks
-```{r}
-shark_temp_data <- 
-  sensor_data %>%
-  filter(Org_type == "Elasmobranch") %>% 
-  filter(ID %% 2 != 1)  %>% 
-  #dplyr::select(transmitter_id) %>% 
-  mutate(ID = ID+1) %>% 
-  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-')))
-
-shark_press_data <- 
-  sensor_data %>%
-  filter(Org_type == "Elasmobranch") %>% 
-  filter(Type =="press") 
-
-```
-
-# Teleosts
-```{r}
-teleost_temp_data <- 
-  sensor_data %>%
-  filter(Org_type == "Teleost") %>% 
-  filter(ID %% 2 == 1)  %>% 
-  #dplyr::select(transmitter_id) %>% 
-  mutate(ID = ID+1) %>% 
-  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-')))
-
-teleost_press_data <- 
-  sensor_data %>%
-  filter(Org_type == "Teleost") %>% 
-  filter(Type =="press") 
-
-```
 
 
 ## Now that temp and pressure data are split out we can calculate calibrated values for the raw data - see wrangling_sensordata.Rmd

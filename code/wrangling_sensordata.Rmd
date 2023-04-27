@@ -36,43 +36,56 @@ rm(list=ls()) # Clear out environment if necessary
 We start with the four separate files for teleosts and sharks, temperature and pressure as there are difference calibration values for each:
 
 
-# Sharks #        
+# Load data
+
+```{r}
+load("../data/Rdata/osp_sens_data.Rdata")
+#head(osp_sens_data)
+```
+
+
+# Next steps
+Each type of T and P sensor has different calibration values (slope and intercept) so we need to separate these all out to calibrate 
+
+
+# Sharks
+Calibration coefficients supplied by Vemco are:
 
     Slope	    Intercept
 P   0.9097	  -3.6388
 T   0.1575	  -5.157
 
-## Load shark data
-```{r}
-load(file = "../data/Rdata/shark_press_data.Rdata")
-load(file = "../data/Rdata/shark_temp_data.Rdata")
-```
-
-## Calculate shark depth
-```{r}
-shark_press_data <- 
-  shark_press_data %>% 
-  mutate(Depth = `Sensor Value`*0.9097 - 3.6388)
-```
-
-## Calculate shark temperature
+# Calculate temp
 ```{r}
 shark_temp_data <- 
-  shark_temp_data %>% 
+  osp_sens_data %>%
+  filter(Org_type == "Elasmobranch") %>% 
+  filter(ID %% 2 != 1)  %>% 
+  #dplyr::select(transmitter_id) %>% 
+  mutate(ID = ID+1) %>% 
+  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-'))) %>% 
   mutate(Temp = `Sensor Value`*0.1575 - 5.157)
+```
+
+# Calculate depth 
+```{r}
+shark_press_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Elasmobranch") %>% 
+  filter(Type =="press") %>% 
+  mutate(Depth = `Sensor Value`*0.9097 - 3.6388)
 ```
 
 
 # Combine together so that temp and depth in the same dataframes
-
-## Combine sharks
 ```{r}
 shark_tp_data <- 
   shark_temp_data %>% 
   full_join(shark_press_data) %>% 
   select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date, 
          Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
-  arrange(detection_timestamp)
+  arrange(detection_timestamp) %>% 
+  droplevels()
 ```
 
 ## Checks
@@ -84,9 +97,7 @@ shark_tp_data # 737000 observations
 
 ### How many individuals detected
 ```{r}
-shark_tp_data %>% 
-  filter(transmitter_id != 0) %>% 
-  droplevels() %$% 
+shark_tp_data %$% 
   summary(transmitter_id)
 ```
 All 15 sharks with T/P tags show up at some point
@@ -94,13 +105,13 @@ All 15 sharks with T/P tags show up at some point
 ### Check one or two individuals for both depth and temp
 ```{r}
 shark_tp_data %>% 
-  filter(transmitter_id == "A69-9004-14037") %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>% 
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Depth)) +
   scale_y_reverse()
 
 shark_tp_data %>% 
-  filter(transmitter_id == "A69-9004-14037") %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>% 
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Temp)) 
 ```
@@ -108,7 +119,62 @@ shark_tp_data %>%
 ##################
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Teleosts #
+
+# Teleosts
+```{r}
+teleost_temp_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Teleost") %>% 
+  filter(ID %% 2 == 1)  %>% 
+  #dplyr::select(transmitter_id) %>% 
+  mutate(ID = ID+1) %>% 
+  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-')))
+
+teleost_press_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Teleost") %>% 
+  filter(Type =="press") 
+
+```
+
+
+
 
      Slope	    Intercept
 P    0.6065	  -2.4258
