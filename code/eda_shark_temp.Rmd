@@ -1,0 +1,78 @@
+---
+title: "Exploratory data analysis - temperature and depth"
+aauthor: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load required packages
+```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+# Housekeeping
+```{r warning=FALSE}
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+# Load shark T/P data
+```{r}
+#load(file = "../data/Rdata/shark_tp_data.Rdata")
+shark_tp_data
+```
+
+# Temp overview
+```{r shark_t_eda1, fig.width=16, fig.height=6}
+shark_tp_data %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  facet_wrap(~ station_name_long)
+```
+A lot of noise in there!
+Only a few observations from Lagoon 1 and none from Lagoon 2 - these unlikely to skew data
+
+
+# Split out max, mean and min temps:
+```{r}
+shark_tp_data %>% 
+ mutate(date = as_date(detection_timestamp)) %>% 
+  group_by(date) %>% 
+  filter(!is.na(Temp)) %>% 
+  summarise(daily_max_temp = max(Temp),
+            daily_min_temp = min(Temp),
+            daily_mean_temp = mean(Temp)) %>% 
+ggplot() +
+  geom_point(aes(x = date, y = daily_max_temp), colour = "red") +
+  geom_point(aes(x = date, y = daily_min_temp), colour = "blue") +
+  geom_point(aes(x = date, y = daily_mean_temp), colour = "grey")
+
+```
+
+
+
+
+
+
+
+
+
+

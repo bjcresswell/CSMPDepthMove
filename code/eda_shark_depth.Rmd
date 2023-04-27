@@ -33,24 +33,20 @@ library(tidyverse)
 #rm(list=ls()) # Clear out environment if necessary
 ```
 
-# Load shark and teleost T/P data
+# Load shark T/P data
 ```{r}
-load(file = "../data/Rdata/shark_tp_data.Rdata")
+#load(file = "../data/Rdata/shark_tp_data.Rdata")
 shark_tp_data
 ```
 
-# Temp overview
-```{r shark_t_eda1, fig.width=16, fig.height=6}
-shark_tp_data %>% 
-  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Temp)) +
-  facet_wrap(~ station_name)
 
-```
-Pattern seems replicated by majority of individuals
 
-# Depth overview
+
+
+
+
+
+# Depth 
 ```{r}
 shark_tp_data %>% 
   filter(station_name_long == 'Lagoon_2')# %>% # Just looking at Silver City for now as it is the only one with observations for the whole period
