@@ -167,7 +167,7 @@ SST_comb2 %>%
 
 
 ```{r}
-SST_comb3 %>% 
+SST_plot <- SST_comb3 %>% 
   ggplot(aes(x = date, y = roll_mean)) +
   geom_point(colour = "blue") +
   geom_line(colour = "grey") +

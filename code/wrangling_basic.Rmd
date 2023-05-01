@@ -118,7 +118,7 @@ osprey_dep2 %$%
 ## Deployment 3 (Oct 2021 - Oct 2022 -> BJC only)
 
 ## Load detection database 3
-```{r load-dep1}
+```{r load-dep3}
 data_dep3 <- read_csv('../data/CSMPdb_uncal_202210.csv') %>% 
   tibble() %>% # Make into tibble format
   mutate(detection_timestamp = as_datetime(DTG), .keep = 'unused', .before = 'Receiver') %>%  # Sort out date-time column early
@@ -154,7 +154,7 @@ osprey_dep3 %$%
 ## Deployment 4 (Feb 2022 - Feb 2023 -> CSMP only)
 
 ## Load detection database 4
-```{r load-dep1}
+```{r load-dep4}
 data_dep4 <- read_csv('../data/CSMPdb_uncal_202303.csv') %>% 
   tibble() %>% # Make into tibble format
   mutate(detection_timestamp = as_datetime(DTG), .keep = 'unused', .before = 'Receiver') %>%  # Sort out date-time column early
@@ -166,7 +166,7 @@ data_dep4 <- read_csv('../data/CSMPdb_uncal_202303.csv') %>%
 ```
 
 ## Add in data-recovery files from Vemco
-```{r load-dep1}
+```{r load-dep4a}
 data_dep4a <- read_csv('../data/CSMPdb_data-recovery-2023-04.csv') %>% 
   tibble() %>% # Make into tibble format
   mutate(detection_timestamp = as_datetime(`Date and Time (UTC)`), .keep = 'unused', .before = 'Receiver') %>%  # Sort out date-time column early
@@ -180,7 +180,6 @@ data_dep4a <- read_csv('../data/CSMPdb_data-recovery-2023-04.csv') %>%
 
 ## See when each one at Osprey crapped out
 ```{r}
-
 data_dep4 %>% 
   group_by(receiver_name) %>% 
   summarise(max_date = max(detection_timestamp))
@@ -220,6 +219,7 @@ osprey_dep4 <- data_dep4 %>%
 osprey_dep4 %$% 
   summary(detection_timestamp)
 ```
+
 ## Check when each crapped out at Osprey
 ```{r}
 osprey_dep4 %>% 
@@ -248,7 +248,6 @@ osp_sens_data %>%
   summarise(first_detection = min(detection_timestamp),
             last_detection = max(detection_timestamp)) %>% 
   mutate(deploy_duration = round(last_detection - first_detection, 0))
-
 ```
 
 
@@ -259,7 +258,7 @@ osp_sens_data %>%
 Need to add in information about animals (not just transmitter_id etc)
 
 ## For this information we need to load our project tag list
-```{r load-proj-tags, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+```{r load-proj-tags, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
 source("../code/project_tag_list.R")
 ```
 
@@ -301,42 +300,3 @@ osp_sens_data <- osp_sens_data %>%
 ```{r}
 save(osp_sens_data, file = "../data/Rdata/osp_sens_data.Rdata")
 ```
-
-
-
-
-
-
-
-####
-
-# Move the below into sensor wrangling script
-
-
-
-
-## Assign just one transmitter id to each sensor tag
-```{r}
-osp_sens_data %>% 
-  dplyr:: select(transmitter_id, Serial, Org_type, Type) %>% 
-  distinct()
-```
-Sharks: a lower-even ID for temp goes with a higher-odd ID for press: Need to +1 to every temp/even ID
-Teleosts: a lower-odd ID for temp goes with a higher-even ID for press: Need to +1 to every temp/odd ID
-
-# Need to filter this out then...
-
-
-## Now that temp and pressure data are split out we can calculate calibrated values for the raw data - see wrangling_sensordata.Rmd
-For now let's save these four dataframes
-```{r}
-save(shark_temp_data, file = "../data/Rdata/shark_temp_data.Rdata")
-save(shark_press_data, file = "../data/Rdata/shark_press_data.Rdata")
-save(teleost_temp_data, file = "../data/Rdata/teleost_temp_data.Rdata")
-save(teleost_press_data, file = "../data/Rdata/teleost_press_data.Rdata")
-```
-
-
-
-
-

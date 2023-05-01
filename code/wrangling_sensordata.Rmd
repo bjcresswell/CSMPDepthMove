@@ -24,7 +24,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Load required packages
-```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(magrittr)
 library(tidyverse)
 ```
 
@@ -43,13 +44,22 @@ load("../data/Rdata/osp_sens_data.Rdata")
 #head(osp_sens_data)
 ```
 
+## Assign just one transmitter id to each sensor tag
 
-# Next steps
-Each type of T and P sensor has different calibration values (slope and intercept) so we need to separate these all out to calibrate 
+Currently each animal has 2 x transmitter IDs for their tag - one for temp and one for pressure. If we want to to look at individual animal patterns we'll need to combine these. First will need to check which transmitter IDs go together:
+```{r}
+osp_sens_data %>% 
+  dplyr:: select(transmitter_id, Serial, Org_type, Type) %>% 
+  distinct()
+```
 
+Sharks: a lower-even ID for temp goes with a higher-odd ID for press: Need to +1 to every temp/even ID
+Teleosts: a lower-odd ID for temp goes with a higher-even ID for press: Need to +1 to every temp/odd ID
+
+We'll do this and at the same time will calibrate using the calibration coefficients (slope and intercept) for the tags as provided by Vemco.
 
 # Sharks
-Calibration coefficients supplied by Vemco are:
+Calibration coefficients:
 
     Slope	    Intercept
 P   0.9097	  -3.6388
@@ -76,7 +86,6 @@ shark_press_data <-
   mutate(Depth = `Sensor Value`*0.9097 - 3.6388)
 ```
 
-
 # Combine together so that temp and depth in the same dataframes
 ```{r}
 shark_tp_data <- 
@@ -88,75 +97,25 @@ shark_tp_data <-
   droplevels()
 ```
 
-## Checks
-
-### General
+# Checks
 ```{r}
-shark_tp_data # 737000 observations
+shark_tp_data # No. of observations ~ 790,000
+shark_tp_data %$% summary(transmitter_id) # No. of individuals detected - all 15 sharks show up at some point
+```
+# Save
+```{r}
+save(shark_tp_data, file = "../data/Rdata/shark_tp_data.Rdata")
 ```
 
-### How many individuals detected
-```{r}
-shark_tp_data %$% 
-  summary(transmitter_id)
-```
-All 15 sharks with T/P tags show up at some point
-
-### Check one or two individuals for both depth and temp
-```{r}
-shark_tp_data %>% 
-  #filter(transmitter_id == "A69-9004-14037") %>% 
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Depth)) +
-  scale_y_reverse()
-
-shark_tp_data %>% 
-  #filter(transmitter_id == "A69-9004-14037") %>% 
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Temp)) 
-```
-
-##################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Teleosts #
 
 # Teleosts
+Calibration coefficients:
+
+     Slope	    Intercept
+P    0.6065	  -2.4258ø
+T    0.1575	  -5.157
+
+# Calculate temp
 ```{r}
 teleost_temp_data <- 
   osp_sens_data %>%
@@ -164,58 +123,39 @@ teleost_temp_data <-
   filter(ID %% 2 == 1)  %>% 
   #dplyr::select(transmitter_id) %>% 
   mutate(ID = ID+1) %>% 
-  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-')))
-
-teleost_press_data <- 
-  osp_sens_data %>%
-  filter(Org_type == "Teleost") %>% 
-  filter(Type =="press") 
-
-```
-
-
-
-
-     Slope	    Intercept
-P    0.6065	  -2.4258
-T    0.1575	  -5.157
-
-## Load teleost data
-```{r}
-load(file = "../data/Rdata/teleost_press_data.Rdata")
-load(file = "../data/Rdata/teleost_temp_data.Rdata")
-```
-
-## Calculate teleost depth
-```{r}
-teleost_press_data <- 
-  teleost_press_data %>% 
-  mutate(Depth = `Sensor Value`*0.6065 - 2.4258)
-```
-
-## Calculate teleost temperature
-```{r}
-teleost_temp_data <- 
-  teleost_temp_data %>% 
+  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-'))) %>% 
   mutate(Temp = `Sensor Value`*0.1575 - 5.157)
 ```
 
+# Calculate depth
+```{r}
+teleost_press_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Teleost") %>% 
+  filter(Type =="press") %>% 
+  mutate(Depth = `Sensor Value`*0.6065 - 2.4258)
+```
 
-## Combine teleosts
+# Combine together so that temp and depth in the same dataframes
 ```{r}
 teleost_tp_data <- 
   teleost_temp_data %>% 
   full_join(teleost_press_data) %>% 
-  select(transmitter_id, detection_timestamp, station_name, Scientific_name, Date, 
+  select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date, 
          Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
-  arrange(detection_timestamp)
+  arrange(detection_timestamp) %>%   
+  droplevels()
+```
+
+# Checks
+```{r}
+teleost_tp_data # No. of observations ~ 41,000
+teleost_tp_data %$% summary(transmitter_id) # No. of individuals detected - only 8 individuals. Will need to check this later
 ```
 
 
-
-
+# Save
 ```{r}
-save(shark_tp_data, file = "../data/Rdata/shark_tp_data.Rdata")
 save(teleost_tp_data, file = "../data/Rdata/teleost_tp_data.Rdata")
 ```
 
