@@ -92,12 +92,15 @@ shark_press_data <-
 shark_tp_data <- 
   shark_temp_data %>% 
   full_join(shark_press_data) %>% 
-  select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date, 
+  dplyr::select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date, 
          Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
-  #filter(!grepl("Lagoon", station_name_long)) %>%  # just a few shark detections (2 individs 14041 and 14059) from lagoon1 so filtering out
+  filter(!grepl("Lagoon", station_name_long),
+         station_name_long != "Overnight_Mooring") %>%  # just a few shark detections (2 individs 14041 and 14059) from lagoon1 so filtering out
+  filter(detection_timestamp < as.Date("2022-11-01 00:00:01")) %>% 
   arrange(detection_timestamp) %>% 
   droplevels()
 ```
+
 
 # Checks
 ```{r}

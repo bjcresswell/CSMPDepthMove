@@ -168,7 +168,7 @@ SST_plot <- SST_comb3 %>%
   geom_line(colour = "grey") +
   theme(axis.text.x = element_text(angle = 90))
 
-SST_comb2
+SST_plot
 ```
 
 
