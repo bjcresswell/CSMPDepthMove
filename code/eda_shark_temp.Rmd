@@ -1,5 +1,5 @@
 ---
-title: "Exploratory data analysis - temperature and depth"
+title: "Exploratory data analysis - temperature"
 aauthor: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -38,38 +38,6 @@ library(tidyverse)
 load(file = "../data/Rdata/shark_tp_data.Rdata")
 shark_tp_data
 ```
-# Load SST data
-```{r}
-source(knitr::purl("../code/wrangling_SSTdata.Rmd", quiet=TRUE))
-```
-
-
-
-
-### Overview depth and temp
-```{r}
-shark_tp_data %>% 
-  #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Depth)) +
-  scale_y_reverse()
-
-shark_tp_data %>% 
-  #filter(transmitter_id == "A69-9004-14037") %>%   # If you want to look at one individual
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Temp)) 
-```
-
-# Temp overview - by station
-```{r shark_t_eda1, fig.width=16, fig.height=6}
-shark_tp_data %>% 
-  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
-  ggplot() +
-  geom_point(aes(x = detection_timestamp, y = Temp)) +
-  facet_wrap(~ station_name_long)
-```
-A lot of noise in there!
-Only a few observations from Lagoon 1 and none from Lagoon 2 - these unlikely to skew data
 
 # Temp overview - by individual
 ```{r shark_t_eda1, fig.width=16, fig.height=6}
@@ -80,35 +48,97 @@ shark_tp_data %>%
   facet_wrap(~ transmitter_id)
 ```
 
-
-
-
-# Split out max, mean and min daily temps:
-
-```{r}
+# Temp overview - by receiver station
+```{r shark_t_eda1, fig.width=16, fig.height=6}
 shark_tp_data %>% 
- mutate(date = as_date(detection_timestamp)) %>% 
-  group_by(date) %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  facet_wrap(~ station_name_long)
+
+shark_tp_data %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  facet_wrap(~ station_name)
+```
+A lot of noise in there!
+Only a few observations from Lagoon 1 and none from Lagoon 2 - these unlikely to skew data
+
+Looks like all individual sharks have data for the whole period
+
+
+# Shark temps - daily summary
+```{r}
+shark_daily_temps <- 
+  shark_tp_data %>% 
+  mutate(date = date(detection_timestamp),
+         year_week = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0"))) %>% 
   filter(!is.na(Temp)) %>% 
+  group_by(date) %>% 
   summarise(daily_max_temp = max(Temp),
             daily_min_temp = min(Temp),
-            daily_mean_temp = mean(Temp)) %>% 
-ggplot() +
-  geom_point(aes(x = date, y = daily_max_temp), colour = "red") +
-  geom_point(aes(x = date, y = daily_min_temp), colour = "blue") +
-  geom_point(aes(x = date, y = daily_mean_temp), colour = "grey") +
-  geom_point(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
-  geom_line(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
-  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45)) 
-
+            daily_mean_temp = mean(Temp))
+shark_daily_temps
+save(shark_daily_temps, file = "../data/Rdata/shark_daily_temps.Rdata")
 ```
 
 
+# Plot along side SST
+
+# Load SST data
+```{r}
+source(knitr::purl("../code/wrangling_SSTdata.Rmd", quiet=TRUE))
+```
+
+## Trim SST to length of deployment used here
+```{r}
+SST_comb3 <- 
+  SST_comb3 %>% 
+  filter(date < as.Date("2022-11-01"))
+```
+
+## Plot
+```{r}
+shark_daily_temps_plot <- 
+shark_daily_temps %>% 
+ggplot() +
+  #geom_point(aes(x = date, y = daily_max_temp), colour = "red") +
+  geom_line(aes(x = date, y = daily_max_temp), colour = "red") +
+  #geom_point(aes(x = date, y = daily_min_temp), colour = "blue") +
+  geom_line(aes(x = date, y = daily_min_temp), colour = "blue") +
+  #geom_point(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  geom_line(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  #geom_point(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
+  geom_line(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_csmp +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  #annotate("text", x = as.Date("2021-11-01"), y = 30.5, label = "a") +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+shark_daily_temps_plot
+```
+
+```{r}
+ggsave(filename = "../output/shark_daily_temps_plot.png", plot = shark_daily_temps_plot, width = 16, height = 10, units = "cm")
+```
 
 
+# Shark temps - weekly summary
+```{r}
+shark_weekly_temps <- 
+  shark_tp_data %>% 
+  mutate(date = date(detection_timestamp),
+         year_week = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0"))) %>% 
+  filter(!is.na(Temp)) %>% 
+  group_by(year_week) %>% 
+  summarise(weekly_max_temp = max(Temp),
+            weekly_min_temp = min(Temp),
+            weekly_mean_temp = mean(Temp))
 
+save(shark_weekly_temps, file = "../data/Rdata/shark_weekly_temps.Rdata")
+```
 
 
 

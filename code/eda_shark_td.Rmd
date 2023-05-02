@@ -1,0 +1,109 @@
+---
+title: "Exploratory data analysis - temperature and depth"
+aauthor: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load required packages
+```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(tidyverse)
+```
+
+# Housekeeping
+```{r warning=FALSE}
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+# Load shark T/P data
+```{r}
+load(file = "../data/Rdata/shark_daily_temps.Rdata")
+load(file = "../data/Rdata/shark_daily_depth.Rdata")
+load(file = "../data/Rdata/shark_tp_data.Rdata")
+
+
+```
+
+### Overview depth and temp
+```{r}
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse()
+
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%   # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) 
+```
+
+
+
+
+```{r}
+tdplot <- depth_plot/temps_plot
+tdplot
+```
+
+```{r}
+ggsave(filename = "../output/tdplot.png", plot = tdplot, width = 16, height = 10, units = "cm")
+```
+
+
+```{r}
+
+shark_daily_td <- 
+  full_join(shark_daily_depths, shark_daily_temps)
+
+```
+
+
+
+
+```{r}
+shark_daily_td %>% 
+  ggplot() +
+  geom_point(aes(x = daily_max_temp, y = daily_max_depth)) +
+  #geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "lm")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
