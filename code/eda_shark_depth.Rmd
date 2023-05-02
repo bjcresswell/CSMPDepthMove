@@ -25,6 +25,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load required packages
 ```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+library(patchwork)
 library(tidyverse)
 ```
 
@@ -40,21 +41,80 @@ shark_tp_data
 ```
 
 
-
-
-
-
-
-
 # Depth 
+
 ```{r}
 shark_tp_data %>% 
-  filter(station_name_long == 'Lagoon_2')# %>% # Just looking at Silver City for now as it is the only one with observations for the whole period
+  mutate(date = date(detection_timestamp),
+         year_week = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0"))) %>% 
+  filter(!is.na(Depth)) %>% 
+  group_by(year_week) %>% 
+  summarise(weekly_max_depth = max(Depth),
+            weekly_min_depth = min(Depth),
+            weekly_mean_depth = mean(Depth))
+
+```
+
+
+
+```{r}
+shark_tp_data %>% 
+  mutate(date = date(detection_timestamp),
+         year_week = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0"))) %>% 
+  filter(!is.na(Depth)) %>% 
+  group_by(year_week) %>% 
+  summarise(weekly_max_depth = max(Depth),
+            weekly_min_depth = min(Depth),
+            weekly_mean_depth = mean(Depth)) %>% 
+  ggplot() +
+  geom_point(aes(x = year_week, y = weekly_max_depth)) +
+  #geom_point(aes(x = date, y = roll_mean), data = SST_comb3, colour = "blue") +
+  #geom_line(aes(x = date, y = roll_mean), data = SST_comb3, colour = "blue") 
+  #geom_smooth(aes(x = date, y = weekly_max_depth)) +
+  scale_y_reverse() 
+```
+
+
+```{r}
+max_dep_plot <- 
+shark_tp_data %>% 
+  mutate(date = date(detection_timestamp)) %>% 
+  filter(!is.na(Depth)) %>% 
+  group_by(date) %>% 
+  summarise(daily_max_depth = max(Depth),
+            daily_min_depth = min(Depth),
+            daily_mean_depth = mean(Depth)) %>% 
+  ungroup() %>% 
+  ggplot() +
+  geom_point(aes(x = date, y = max_depth)) +
+  #geom_point(aes(x = date, y = roll_mean), data = SST_comb3, colour = "blue") +
+  #geom_line(aes(x = date, y = roll_mean), data = SST_comb3, colour = "blue") 
+  #geom_smooth(aes(x = date, y = max_depth)) +
+  scale_y_reverse() 
+```
+
+
+```{r}
+max_dep_plot/SST_plot
+```
+
+
+# Depth - by receiver location
+```{r}
+shark_tp_data %>% 
+  #filter(station_name_long == 'Lagoon_2')# %>% # Just looking at Silver City for now as it is the only one with observations for the whole period
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Depth)) +
   scale_y_reverse()  +
   facet_wrap(~station_name)
 ```
+
+
+
+
+
+
+
 Same with depth - pattern replicated by most individuals. 
 Interesting to look at #14049 who didn't make as many deep moves and whose overall temperatures look higher than the others.
 

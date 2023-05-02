@@ -35,11 +35,32 @@ library(tidyverse)
 
 # Load shark T/P data
 ```{r}
-#load(file = "../data/Rdata/shark_tp_data.Rdata")
+load(file = "../data/Rdata/shark_tp_data.Rdata")
 shark_tp_data
 ```
+# Load SST data
+```{r}
+source(knitr::purl("../code/wrangling_SSTdata.Rmd", quiet=TRUE))
+```
 
-# Temp overview
+
+
+
+### Overview depth and temp
+```{r}
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse()
+
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%   # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) 
+```
+
+# Temp overview - by station
 ```{r shark_t_eda1, fig.width=16, fig.height=6}
 shark_tp_data %>% 
   #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
@@ -50,8 +71,20 @@ shark_tp_data %>%
 A lot of noise in there!
 Only a few observations from Lagoon 1 and none from Lagoon 2 - these unlikely to skew data
 
+# Temp overview - by individual
+```{r shark_t_eda1, fig.width=16, fig.height=6}
+shark_tp_data %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  facet_wrap(~ transmitter_id)
+```
 
-# Split out max, mean and min temps:
+
+
+
+# Split out max, mean and min daily temps:
+
 ```{r}
 shark_tp_data %>% 
  mutate(date = as_date(detection_timestamp)) %>% 
@@ -63,7 +96,12 @@ shark_tp_data %>%
 ggplot() +
   geom_point(aes(x = date, y = daily_max_temp), colour = "red") +
   geom_point(aes(x = date, y = daily_min_temp), colour = "blue") +
-  geom_point(aes(x = date, y = daily_mean_temp), colour = "grey")
+  geom_point(aes(x = date, y = daily_mean_temp), colour = "grey") +
+  geom_point(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
+  geom_line(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45)) 
 
 ```
 
