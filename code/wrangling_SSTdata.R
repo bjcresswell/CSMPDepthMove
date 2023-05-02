@@ -1,50 +1,20 @@
----
-title: "Calibrating sensor data"
-aauthor: "Ben Cresswell"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: 
- html_document:
-    code_folding: show
-    collapse: no
-    df_print: paged
-    fig_caption: yes
-    fig_height: 4
-    fig_width: 4
-    highlight: textmate
-    theme: spacelab
-    toc: yes
-    toc_float: yes
-editor_options: 
-  chunk_output_type: inline
----
-
-
-```{r setup, include=FALSE}
+## ----setup, include=FALSE-------------------------------------------------------------------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
-```
 
-# Load required packages
-```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+
+## ----packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE---------------------------------------------------------------------
 library(tidyverse)
-```
 
-# Housekeeping
-```{r warning=FALSE}
+
+## ----warning=FALSE--------------------------------------------------------------------------------------------------------------------------------
 #rm(list=ls()) # Clear out environment if necessary
-```
 
-SST data downloaded from the GIOVANNI portal
 
-Need to trim to dates for detections - check what time span our detections cover
-
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 #shark_tp_data %>% summarise(min(detection_timestamp), max(detection_timestamp))
-```
 
-So start end of October 2021 and go until late Feb 2023.
 
-## Nighttime 11 micron dataset
-```{r load-SST11, message=FALSE, warning=FALSE}
+## ----load-SST11, message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------
 SST11mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_NSST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', 
                      skip = 7) %>% 
   rename(temp = "MODISA_L3m_NSST_8d_4km_R2019_0_sst") %>% 
@@ -60,15 +30,9 @@ SST11mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_NSST_8d_4km_R2
          
 
 SST11mic   
-```
 
 
-
-
-
-
-## Nighttime 4 micron dataset
-```{r load-SST4, message=FALSE, warning=FALSE}
+## ----load-SST4, message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------
 SST4mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST4_8d_4km_R2019_0_sst4.20211019-20230305.146E_13S_146E_13S.csv', 
                      skip = 7) %>% 
   rename(temp = "MODISA_L3m_SST4_8d_4km_R2019_0_sst4") %>% 
@@ -82,10 +46,9 @@ SST4mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST4_8d_4km_R20
          year_week = paste(year, week)) %>% 
   mutate(year_week2 = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0")))
          
-```
 
-## Daytime 11 micron dataset
-```{r load-SST11day, message=FALSE, warning=FALSE}
+
+## ----load-SST11day, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------
 SST11micday <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', 
                      skip = 7) %>% 
   rename(temp = "mean_MODISA_L3m_SST_8d_4km_R2019_0_sst") %>% 
@@ -99,10 +62,9 @@ SST11micday <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST_8d_4km_
          year_week = paste(year, week)) %>% 
   mutate(year_week2 = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0")))
          
-```
 
-## Check what values these 3 datasets are providing
-```{r}
+
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 ggplot() +
   geom_point(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
   geom_line(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
@@ -111,22 +73,16 @@ ggplot() +
   geom_point(aes(x = date, y = temp), data = SST11micday, colour = "black") +
   geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
   theme_minimal()
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SSTcomb <- 
   full_join(SST4mic, SST11mic) %>% 
   full_join(SST11micday) %>% 
   arrange(year_week2)
-```
 
 
-
-
-
-
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SST_comb2 <- 
 SSTcomb %>% 
   group_by(year, week, year_week2) %>% 
@@ -145,10 +101,9 @@ SSTcomb %>%
          roll_mean = (lag_mean_temp + mean_temp)/2)
 
 
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SST_comb2 %>% 
   ggplot(aes(x = year_week2, y = roll_mean)) +
   geom_point(colour = "blue") +
@@ -158,10 +113,9 @@ SST_comb2 %>%
   geom_point(colour = "blue") +
   geom_line() +
  theme(axis.text.x = element_text(angle = 90))
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SST_plot <- SST_comb3 %>% 
   ggplot(aes(x = date, y = roll_mean)) +
   geom_point(colour = "blue") +
@@ -169,12 +123,9 @@ SST_plot <- SST_comb3 %>%
   theme(axis.text.x = element_text(angle = 90))
 
 SST_comb2
-```
 
 
-
-
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SSTcomb %>% 
   mutate(year = year(date),
          week = isoweek(date),
@@ -184,10 +135,9 @@ SSTcomb %>%
   ungroup() %>% 
   mutate(prior_mean_temp = lag(mean_temp),
          movavg = (prior_mean_temp + mean_temp)/2)
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SSTcomb %>% 
   mutate(year = year(date),
          week = isoweek(date),
@@ -197,31 +147,15 @@ SSTcomb %>%
   ungroup() %>% 
   mutate(prior_mean_temp = lag(mean_temp),
          movavg = (prior_mean_temp + mean_temp)/2)
-```
 
 
-
-
-
-
-
-
-
-
-
-
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 ggplot() +
   geom_point(aes(x = date, y = temp), data = SSTcomb, colour = "blue") +
   geom_line(aes(x = date, y = temp), data = SSTcomb, colour = "blue")
-```
 
 
-
-
-
-
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SST_2021a <- 
   SSTcomb %>% 
   mutate(year = year(time),
@@ -243,19 +177,14 @@ SST_2022
 
 
 SST_2023
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SST_2021a
 SST_2021b
-```
 
 
-
-
-
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 n <- 2
 
 SST_comb2 <- 
@@ -269,15 +198,11 @@ SSTcomb %>%
   #mutate(mean_temp = mean(temp)) %>%
 
 SST_comb2
-```
 
 
-```{r}
+## -------------------------------------------------------------------------------------------------------------------------------------------------
 SST_comb2 %>% 
 ggplot() +
   geom_point(aes(x = year_week, y = movavg), colour = "blue") +
   geom_line(aes(x = year_week, y = movavg), colour = "blue")
-```
-
-
 

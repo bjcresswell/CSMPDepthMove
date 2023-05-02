@@ -50,7 +50,8 @@ Currently each animal has 2 x transmitter IDs for their tag - one for temp and o
 ```{r}
 osp_sens_data %>% 
   dplyr:: select(transmitter_id, Serial, Org_type, Type) %>% 
-  distinct()
+  distinct() %>% 
+  arrange(Serial)
 ```
 
 Sharks: a lower-even ID for temp goes with a higher-odd ID for press: Need to +1 to every temp/even ID
@@ -93,14 +94,16 @@ shark_tp_data <-
   full_join(shark_press_data) %>% 
   select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date, 
          Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
+  #filter(!grepl("Lagoon", station_name_long)) %>%  # just a few shark detections (2 individs 14041 and 14059) from lagoon1 so filtering out
   arrange(detection_timestamp) %>% 
   droplevels()
 ```
 
 # Checks
 ```{r}
-shark_tp_data # No. of observations ~ 790,000
-shark_tp_data %$% summary(transmitter_id) # No. of individuals detected - all 15 sharks show up at some point
+glimpse(shark_tp_data) # No. of observations ~ 789,576
+shark_tp_data %$% summary(transmitter_id) # No. of individuals detected - all 15 sharks show up at some point & have 1000's of obs for each
+#shark_tp_data  %>% distinct(transmitter_id) # No. of individuals detected - all 15 sharks show up at some point
 ```
 # Save
 ```{r}
@@ -149,12 +152,10 @@ teleost_tp_data <-
 
 # Checks
 ```{r}
-teleost_tp_data # No. of observations ~ 41,000
-teleost_tp_data %$% summary(transmitter_id) # No. of individuals detected - only 8 individuals. Will need to check this later
+glimpse(teleost_tp_data) # No. of observations ~ 41,000
+teleost_tp_data %$% summary(transmitter_id) # No. of individuals detected - only 8 individuals. Already established we are missing 2 GTs
 ```
 
-
-# Save
 ```{r}
 save(teleost_tp_data, file = "../data/Rdata/teleost_tp_data.Rdata")
 ```

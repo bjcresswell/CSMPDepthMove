@@ -237,10 +237,32 @@ At the same time we'll remove all non-T/P tag detections
 osp_sens_data <- rbind(osprey_dep2, osprey_dep3, osprey_dep4) %>% 
   filter(!is.na(`Sensor Value`)) %>% 
   droplevels()
-summary(osp_sens_data$station_name) 
 ```
-Now we have a whole data file, we can combine with information about tagged animal details (for animals that we have info for)
 
+# Checks
+Should have 14 individual stations in the dataset
+```{r}
+summary(osp_sens_data$station_name_long)
+```
+
+
+Should have 25 tagged animals
+```{r}
+osp_sens_data %>% 
+  distinct(transmitter_id)
+
+osp_sens_data %>% 
+  filter(is.na(`Sensor Value`))
+
+
+```
+
+
+
+
+
+
+#Now we have a whole data file, we can combine with information about tagged animal details (for animals that we have info for)
 
 ```{r}
 osp_sens_data %>% 
@@ -274,26 +296,66 @@ project_tags_all %>%
 
 ```
 
-We have 10 teleosts and 15 sharks - 25 total. Each has a temp and press transmitter_id so we should have 50 show up in our detections:
+We have tagged 10 teleosts and 15 sharks - 25 total. Each has a temp and press transmitter_id so we should have 50 show up in our detections:
+
 ```{r}
 osp_sens_data %>% 
   distinct(transmitter_id) %>% 
-  merge(project_tags_all) %>% 
+  left_join(project_tags_all) %>% 
+  arrange(transmitter_id) %>% 
+  filter(!is.na(Common_name)) %>% 
   droplevels() %$%
   summary(Location)
+    
 ```
 
-Only have 46, which means we are missing two animals. Will figure out which ones later.
+Only have 46 T/P tags - 23 transmitters total. Means we are missing two animals. Let's figure out which ones
+
+# Sharks?
+```{r}
+osp_sens_data %>% 
+  distinct(transmitter_id) %>% 
+  left_join(project_tags_all) %>% 
+  arrange(transmitter_id) %>% 
+  filter(!is.na(Common_name)) %>% 
+  filter(Org_type == "Elasmobranch") %>% 
+  filter(Type == "temp")
+
+```
+15 sharks - correct
+
+# Teleosts?
+```{r}
+osp_sens_data %>% 
+  distinct(transmitter_id) %>% 
+  left_join(project_tags_all) %>% 
+  arrange(transmitter_id) %>% 
+  filter(!is.na(Common_name)) %>% 
+  filter(Org_type == "Teleost") %>% 
+  filter(Type == "temp")
+```
+
+8 teleosts - 2 missing
+
+# Which ones...
+```{r}
+project_tags_all %>% 
+  filter(Org_type == "Teleost") %>% 
+  filter(Type == "temp") %>% 
+  #distinct(transmitter_id) %>% 
+  anti_join(osp_sens_data) %>% 
+  arrange(transmitter_id)
+```
+Two GTs tagged in March 2022 are completely missing from study
 
 
 ## Combine animal info into main df
 ```{r}
 osp_sens_data <- osp_sens_data %>% 
-  merge(project_tags_all, by='transmitter_id', all.x = TRUE) %>% 
-  droplevels() %>% 
-  filter(!is.na(Org_type)) # If we don't know this then it's not an animal that we have tagged (could filter on other variables)
+  left_join(project_tags_all, by='transmitter_id') %>% 
+  filter(!is.na(Org_type)) %>% # If we don't know this then it's not an animal that we have tagged (could filter on other variables)
+  droplevels()
 ```
-
 
 ## Save
 
