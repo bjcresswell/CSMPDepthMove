@@ -19,23 +19,11 @@ editor_options:
 ---
 
 
-```{r setup, include=FALSE}
+```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-# Load required packages
-```{r message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-library(magrittr)
-library(tidyverse)
-```
-
-# Housekeeping
-```{r warning=FALSE}
+source('packages.R')
 rm(list=ls()) # Clear out environment if necessary
 ```
-
-We start with the four separate files for teleosts and sharks, temperature and pressure as there are difference calibration values for each:
-
 
 # Load data
 
@@ -94,8 +82,9 @@ shark_tp_data <-
   full_join(shark_press_data) %>% 
   dplyr::select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date, 
          Location, Site, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
-  filter(!grepl("Lagoon", station_name_long),
-         station_name_long != "Overnight_Mooring") %>%  # just a few shark detections (2 individs 14041 and 14059) from lagoon1 so filtering out
+  filter(!grepl("Lagoon", station_name_long),        # just a few shark detections (2 individs 14041 and 14059) from lagoon1 so filtering out
+         #station_name_long != "Overnight_Mooring"   # may need to leave ONM out as it only has shallow/hot detections but will leave in for now
+         ) %>%  
   filter(detection_timestamp < as.Date("2022-11-01 00:00:01")) %>% 
   arrange(detection_timestamp) %>% 
   droplevels()

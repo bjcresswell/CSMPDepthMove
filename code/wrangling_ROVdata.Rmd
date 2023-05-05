@@ -1,6 +1,6 @@
 ---
 title: "Wrangling ROV data"
-aauthor: "Ben Cresswell"
+author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
  html_document:
@@ -18,22 +18,18 @@ editor_options:
   chunk_output_type: inline
 ---
 
-```{r setup, include=FALSE}
+```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+source("packages.R")
+#rm(list=ls()) # Clear out environment if necessary```
 ```
 
-# Load required packages
-```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-library(hms)
-library(tidyverse)
-```
+# Introduction
 
-# Housekeeping
-```{r warning=FALSE}
-rm(list=ls()) # Clear out environment if necessary
-```
-
-ROV records temperature and depth as part of its deployment metadata log. We have a number of deployments at Osprey Reef, from 
+All ROV deployments in the Coral Sea have records of temperature and depth as part of deployment metadata log. 
+We have deployments on Osprey from the summer of 2020/21 and 2022/23  -> sadly none from summer 2021/2022 which would correspond to our depth movement data
+We also have access to temperature profile data from CTD drops in winter 2020 on RV Falkor - https://www.nodc.noaa.gov/archive/arc0163/0222330/1.1/data/0-data/FK200802_138578_ctd/data/FK200802_CTD010_20200820.hex
+Need to process raw file using proprietary software - http://rstudio-pubs-static.s3.amazonaws.com/501186_8eb862a1b63242578e0b28468a4dadc9.html
 
 ## Load
 ### Deployment 22-02-2023 - Osprey North Horn - Dive 1 97m -> surface
@@ -50,7 +46,7 @@ NHorn2023_D1 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>%
 NHorn2023_D2 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2) %>% 
-  filter(Time > parse_hms("09:11:30")) %>%  # Beginning of the first 90m+ transect
+  filter(Time > parse_hms("09:11:30")) %>%  # ROV redeployed and sent back down to ~50m
   filter(Time < parse_hms("09:35:00"))  # End of dive
 ```
 
@@ -64,7 +60,7 @@ OspEnt2021 <- read_csv('../data/ROV/2021-02-23 11-32-50 vehicle1.csv') %>%
 ```
 
 ### Deployment 24-01-2021 - Osprey North Horn - Dive 1 50m - surface
-```{r load-dep2021, message=FALSE, warning=FALSE}
+```{r load-dep2021ii, message=FALSE, warning=FALSE}
 NHorn2021_D1 <- read_csv('../data/ROV/2021-02-24 07-43-14 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
@@ -72,8 +68,8 @@ NHorn2021_D1 <- read_csv('../data/ROV/2021-02-24 07-43-14 vehicle1.csv') %>%
   filter(Time < parse_hms("09:40:30"))  # End of dive
 ```
 
-### Deployment 24-01-2021 - Osprey North Horn - Dive 2 9
-```{r load-dep2021, message=FALSE, warning=FALSE}
+### Deployment 24-01-2021 - Osprey North Horn - Dive 2 99 - 50m
+```{r load-dep2021iii, message=FALSE, warning=FALSE}
 NHorn2021_D2 <- read_csv('../data/ROV/2021-02-24 10-59-22 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
@@ -82,20 +78,94 @@ NHorn2021_D2 <- read_csv('../data/ROV/2021-02-24 10-59-22 vehicle1.csv') %>%
 ```
 
 
-#### Temp vs depth 
+### Temp vs depth 
+
+### Data from summer 2023 deployment
 ```{r}
+#sumtemp2023 <- 
 ggplot() +
-  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2021_D2, colour = 'cyan') +
-  #geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = OspEnt2021, colour = 'deepskyblue') +
-  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D1, colour = 'palegreen') +
-  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D2, colour = 'palegreen') +
-  scale_x_continuous(limits = c(25,31))
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D1, colour = 'slateblue', size = 0.2) +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D2, colour = 'navy', size = 0.2) +
+  scale_x_continuous(limits = c(24, 31)) +
+  theme_minimal() +
+  xlab("Temp (°C)") + 
+  ylab("Depth (m below sea level")
+
+#sumtemp2023
 ```
 
 
+### Data from summer 2021 deployment
+```{r}
+#sumtemp2021 <- 
+ggplot() +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2021_D1, colour = 'grey70', size = 0.5) +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2021_D2, colour = 'grey50', size = 0.5) +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = OspEnt2021, colour = 'grey30', size = 0.5) +
+  scale_x_continuous(limits = c(24, 31)) +
+  theme_minimal() +
+  xlab("Temp (°C)") + 
+  ylab("Depth (m below sea level")
 
+#sumtemp2021
+```
 
+# Combine all deployments and see if we can model a temp-depth relationship
+```{r}
+ROV_temp_comb <- 
+  NHorn2021_D1 %>% 
+  full_join(NHorn2021_D2) %>% 
+  full_join(OspEnt2021) %>% 
+  full_join(NHorn2023_D1) %>% 
+  full_join(NHorn2023_D2) %>% 
+  mutate(depth = altitudeRelative,
+         temp = temperature.temperature2,
+         .keep = "none") %>% 
+  arrange(depth)
+```
 
+```{r}
+ROV_temp_comb %>% 
+  ggplot() +
+  geom_point(aes(x = depth, y = temp), size = 0.2) +
+  geom_smooth(aes(x = depth, y = temp))
+
+ROV_temp_comb %>% 
+  ggplot() +
+  geom_point(aes(x = temp, y = depth), size = 0.2) +
+  geom_smooth(aes(x = temp, y = depth),  method = "gam", formula = y ~ s(x, bs = 'cs'))
+
+BLUEROVplot <- 
+  ROV_temp_comb %>% 
+  ggplot() +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D1, colour = 'grey10', size = 0.3) +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D2, colour = 'grey20', size = 0.3) +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2021_D1, colour = 'grey30', size = 0.3) +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2021_D2, colour = 'grey45', size = 0.3) +
+  geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = OspEnt2021, colour = 'grey60', size = 0.3) +
+  #geom_smooth(aes(x = temp, y = depth)) +
+  #geom_smooth(aes(x = temp, y = depth),  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.99, colour = 'red') +
+  #geom_hline(yintercept = -50, colour = "blue", lty = '22') +
+  #geom_vline(xintercept = 28.21, colour = "blue", lty = '22') +
+  scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
+  theme_minimal() +
+  xlab("Temp (°C)") + 
+  ylab("Depth (m below sea level")
+
+ROV_GAMplot <- 
+  ROV_temp_comb %>% 
+  ggplot() +
+  #geom_smooth(aes(x = temp, y = depth)) +
+  geom_smooth(aes(x = temp, y = depth),  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.99, colour = 'red') +
+  geom_hline(yintercept = -50, colour = "blue", lty = '22') +
+  geom_vline(xintercept = 28.21, colour = "blue", lty = '22') +
+  scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
+  theme_minimal() +
+  xlab("Temp (°C)") + 
+  ylab("Depth (m below sea level")
+
+BLUEROVplot + ROV_GAMplot
+```
 
 
 

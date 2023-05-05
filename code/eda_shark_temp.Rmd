@@ -1,6 +1,6 @@
 ---
-title: "Exploratory data analysis - temperature"
-aauthor: "Ben Cresswell"
+title: "Exploratory data analysis - shark temperature"
+author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
  html_document:
@@ -19,17 +19,9 @@ editor_options:
 ---
 
 
-```{r setup, include=FALSE}
+```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-# Load required packages
-```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-library(tidyverse)
-```
-
-# Housekeeping
-```{r warning=FALSE}
+source("packages.R")
 #rm(list=ls()) # Clear out environment if necessary
 ```
 
@@ -40,7 +32,7 @@ shark_tp_data
 ```
 
 # Temp overview - by individual
-```{r shark_t_eda1, fig.width=16, fig.height=6}
+```{r fig.width=16, fig.height=6}
 shark_tp_data %>% 
   #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
   ggplot() +
@@ -49,7 +41,7 @@ shark_tp_data %>%
 ```
 
 # Temp overview - by receiver station
-```{r shark_t_eda1, fig.width=16, fig.height=6}
+```{r fig.width=16, fig.height=6}
 shark_tp_data %>% 
   #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
   ggplot() +
@@ -72,30 +64,27 @@ Looks like all individual sharks have data for the whole period
 ```{r}
 shark_daily_temps <- 
   shark_tp_data %>% 
-  mutate(date = date(detection_timestamp),
-         year_week = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0"))) %>% 
+  mutate(date = date(detection_timestamp)) %>% 
   filter(!is.na(Temp)) %>% 
   group_by(date) %>% 
   summarise(daily_max_temp = max(Temp),
             daily_min_temp = min(Temp),
             daily_mean_temp = mean(Temp))
 shark_daily_temps
-save(shark_daily_temps, file = "../data/Rdata/shark_daily_temps.Rdata")
+#save(shark_daily_temps, file = "../data/Rdata/shark_daily_temps.Rdata")
 ```
 
 
 # Plot along side SST
 
 # Load SST data
-```{r}
+```{r echo=FALSE, message=FALSE}
 source(knitr::purl("../code/wrangling_SSTdata.Rmd", quiet=TRUE))
 ```
 
 ## Trim SST to length of deployment used here
 ```{r}
-SST_comb3 <- 
-  SST_comb3 %>% 
-  filter(date < as.Date("2022-11-01"))
+#SST_comb3 <-   SST_comb3 %>%   filter(date < as.Date("2022-11-01"))
 ```
 
 ## Plot
@@ -103,25 +92,30 @@ SST_comb3 <-
 shark_daily_temps_plot <- 
 shark_daily_temps %>% 
 ggplot() +
-  #geom_point(aes(x = date, y = daily_max_temp), colour = "red") +
   geom_line(aes(x = date, y = daily_max_temp), colour = "red") +
-  #geom_point(aes(x = date, y = daily_min_temp), colour = "blue") +
+  geom_smooth(aes(x = date, y = daily_max_temp), colour = "red") +
   geom_line(aes(x = date, y = daily_min_temp), colour = "blue") +
-  #geom_point(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  geom_smooth(aes(x = date, y = daily_min_temp), colour = "blue") +
   geom_line(aes(x = date, y = daily_mean_temp), colour = "grey40") +
-  #geom_point(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
-  geom_line(aes(x = date, y = roll_mean), data = SST_comb3, colour = "black") +
+  geom_smooth(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  geom_line(aes(x = week_date, y = weekly_rolling_mean), data = SSTcomb, colour = "black") +
+  geom_smooth(aes(x = week_date, y = weekly_rolling_mean), data = SSTcomb, colour = "black") +
+  geom_line(aes(x = date, y = temp), data = CRWdata, colour = "orange") +
   scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
-  theme_csmp +
+  theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   #annotate("text", x = as.Date("2021-11-01"), y = 30.5, label = "a") +
-  xlab("Month of year") + 
+  xlab("\nMonth of year") + 
   ylab("Temp (°C)")
+
 shark_daily_temps_plot
+
 ```
 
+
+
 ```{r}
-ggsave(filename = "../output/shark_daily_temps_plot.png", plot = shark_daily_temps_plot, width = 16, height = 10, units = "cm")
+#ggsave(filename = "../output/shark_daily_temps_plot.png", plot = shark_daily_temps_plot, width = 16, height = 10, units = "cm")
 ```
 
 
@@ -129,16 +123,38 @@ ggsave(filename = "../output/shark_daily_temps_plot.png", plot = shark_daily_tem
 ```{r}
 shark_weekly_temps <- 
   shark_tp_data %>% 
-  mutate(date = date(detection_timestamp),
-         year_week = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0"))) %>% 
+  mutate(week_date = date(floor_date(detection_timestamp, "week"))) %>%
   filter(!is.na(Temp)) %>% 
-  group_by(year_week) %>% 
+  group_by(week_date) %>% 
   summarise(weekly_max_temp = max(Temp),
             weekly_min_temp = min(Temp),
             weekly_mean_temp = mean(Temp))
-
-save(shark_weekly_temps, file = "../data/Rdata/shark_weekly_temps.Rdata")
+shark_weekly_temps
+#save(shark_weekly_temps, file = "../data/Rdata/shark_weekly_temps.Rdata")
 ```
+
+# Plot weekly temps
+```{r}
+shark_weekly_temps_plot <- 
+shark_weekly_temps %>% 
+  ggplot() +
+  geom_line(aes(x = week_date, y = weekly_min_temp), colour = "blue") +
+  #geom_smooth(aes(x = week_date, y = weekly_min_temp), colour = "blue", method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
+  geom_smooth(aes(x = week_date, y = weekly_min_temp), colour = "blue", method = "loess", level = 0.95) +
+  geom_line(aes(x = week_date, y = weekly_mean_temp), colour = "grey30") +
+  geom_smooth(aes(x = week_date, y = weekly_mean_temp), colour = "grey30", method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
+  geom_line(aes(x = week_date, y = weekly_max_temp), colour = "red") +
+  geom_smooth(aes(x = week_date, y = weekly_max_temp), colour = "red", method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  xlab("Date") +
+  ylab("Averaged weekly depths \n (m below sealevel)")
+shark_weekly_temps_plot
+```
+
+
+
 
 
 

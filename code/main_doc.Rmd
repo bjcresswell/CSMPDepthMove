@@ -1,6 +1,6 @@
 ---
-title: "Seasonal SSTs and depth utilisation in Carcharhinus amblyrhyncos"
-aauthor: "Ben Cresswell"
+title: "Initial data exploration: Regulation of temperature via depth in response to seasonal changes in SST in *Carcharhinus amblyrhynchos*"
+author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
  html_document:
@@ -8,8 +8,8 @@ output:
     collapse: no
     df_print: paged
     fig_caption: yes
-    fig_height: 4
-    fig_width: 4
+    fig_height: 5
+    fig_width: 8
     highlight: textmate
     theme: spacelab
     toc: yes
@@ -19,11 +19,215 @@ editor_options:
 ---
 
 
-```{r setup, include=FALSE, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
 source("packages.R")
-
 #rm(list=ls()) # Clear out environment if necessary
-
 ```
+
+### Introduction
+
+This document provides an initial overview into the temperature and pressure (i.e. depth) data retrieved from the 15 x *Carcharhinus amblyrhychos* tagged with V16 T/P transmitters at Osprey reef. The data span a period of 1 year, including one whole Austral 'summer' and 'winter' period and all 15 individuals were detected throughout the period (no missing animals!). There are some noticeable patterns in annual SSTs and also in the maximum, mean and minimum temperatures and depths that these sharks experienced on a daily basis, which will hopefully become apparent in the rest of this document...
+
+
+### Long-term annual SST patterns in the northern Coral Sea
+
+I used Coral Reef Watch's virtual station for the Northern Coral Sea Islands to obtain long-term monthly mean SSTs for the region. Reefs of the northern Coral Sea experience annual fluctuations of about 4-5°C with peak summer mean temperatures occurring around Jan-Feb and winter minimum means around August. Note that the virtual station that these data pertain to is a polygon centered on Long: 149.35  Lat: -16.00, which is in between Willis Island and Moore reef, approx 250km south of Osprey. I am currently investigating options for calculating long term mean temps for Osprey from other satellite and in-situ data, but I think the pattern will be broadly correct, as will be seen below when we compare to both satellite data for the year of study and the temperatures logged by the sharks. Long term data available at: coralreefwatch.noaa.gov/product/vs/data/northern_coral_sea
+
+```{r CRW-LT, echo=FALSE, fig.cap="Avg monthly mean SSTs for the Northern Coral Sea Islands (taken from: https://coralreefwatch.noaa.gov/product/vs/data/northern_coral_sea.txt)"}
+source(knitr::purl("../code/wrangling_SSTdata.Rmd", quiet=TRUE))
+AMMplot
+```
+
+### SST variation during study period
+
+For SST values for the study period I used two forms of remote-sensed (satellite) data:
+
+1. The same CRW virtual station provides daily SST values from NOAA's GOES/NESDIS satellite platform so I downloaded these via the same link as above. The main "downside" of these data are that they do not provide SST values from Osprey itself, but rather from a larger area in the general region. The upside is that you can get daily values.
+
+2. NASA's GIOVANNI data portal provides access area-averaged historic/time-series SST data recorded by their MODIS-Aqua (MODISA) satellite. The satellite has 4 and 11micron sensors on it and collects readings every 8 days, with the 11micron You are able to specify a 4x4km bounding box on an area of your choice so the upside is the spatial accuracy, while the downside is that you only get ~3 readings per month. 
+
+SSTs from the two sources are actually very similar in terms of overall patterns. During the period of interest (October 2021 - October 2022), the region experienced temperature fluctuations of approximately this magnitude, as did Osprey Reef itself, with an extended summer of peak temperatures ~30°C from Dec 2021 - Mar 2022.
+
+```{r CRW-MODIS, echo=FALSE, fig.cap="Left fig: Daily mean SSTs for the NCSI region; Fight fig. 8-day mean SSTs taken from MODISA 4micron night in light-grey, 11micron night in mid-grey, 11micron day in dark-grey.", fig.width = 10}
+CRWplot + MODISplot 
+```
+
+### Sea temperature attenuation with depth
+
+Any organism living in surface waters will consequently experience these temperature fluctuations. However the deep reef walls of Coral Sea seamount reefs are open to deep pelagic water extending to kms, a pattern that probably needs quantifying in the context of this study. In the tropics temperature is known to decrease with depth in a non-linear and seasonably-varying fashion, so at least one summer and one winter profile would be good to have. For the former, I used the seawater temperature metadata recorded by ROV deployments at Osprey reef:
+
+### Summer depth-temperature profile
+
+```{r B-ROV-td, echo=FALSE, fig.width = 10}
+source(knitr::purl("../code/wrangling_ROVdata.Rmd", quiet=TRUE))
+BLUEROVplot + ROV_GAMplot
+```
+
+The above left figure shows temperature and depth as recorded during 5 ROV dives, 2 from 2023 and 3 from 2021, both in summer periods (Jan-Feb). We did not survey Osprey reef in summer 2022 (nearest reef was Bougainville which we surveyed in October 2021 - I may investigate this). The figure on the right shows a smooth fitted to these data (±95%CI, almost invisible as they are tight to the fitted value). The horizontal blue dotted line represents the average maximum depth of the shelf surrounding most GBR reefs and the vertical dotted line simply indicates the intercept with the smooth and how this might limit potential minimum temperatures on the GBR (i.e. 28.2 °C, due to lack of depth). 
+
+*Next step: get hold of a CTD or other profiler deployment from the N GBR to properly test this*
+
+```{r GBR-CTD}
+## INSERT GBR PROFILE RESULTS HERE ##
+```
+
+
+For winter temperature profiles, I used CTD data from a single drop by RV Falkor in the middle of 2020 winter period (20-Aug-2020). I sourced raw data from https://www.nodc.noaa.gov/archive/arc0163/0222330/1.1/data/0-data/FK200802_138578_ctd/data/, processed and calibrating it using SeaBird's proprietary software and the "oce" package in R.
+
+### Summer vs winter depth-temperature profiles
+
+```{r Osprey-CTD, echo=FALSE, fig.width = 10}
+#setwd('../code')
+source("CTDwrangle.R")
+
+osp_ctd1 <- 
+osprey_ctd %>% 
+  filter(depth <101) %>% 
+  ggplot() +
+  geom_point(aes(x = temperature, y = -depth), colour = "blue", size = 0.05) +
+  geom_point(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red", size = 0.05) +
+  scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
+  theme_minimal() +
+  xlab("Temp (°C)") + 
+  ylab("Depth (m below sea level")
+
+osp_ctd2 <- 
+osprey_ctd %>% 
+  filter(depth <101) %>% 
+  ggplot() +
+  geom_smooth(aes(x = temperature, y = -depth), colour = "blue") +
+  geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red") +
+  scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
+  theme_minimal() +
+  xlab("Temp (°C)") + 
+  ylab("Depth (m below sea level")
+
+osp_ctd1 + osp_ctd2
+```
+
+
+The above figure shows the approx 5°C difference in SST between seasons and the differences in temperature attenuation with depth between seasons. Temperatures at the 100m point remain more stable annually at around the 25°C mark. Left fig: red dots = ROV (summer) temp data, blue dots = CTD (winter) data. Right fig: red line = fitted summer smooth, blue line = fitted winter smooth.
+
+
+### Effect of SST on sharks - maximum daily temperatures
+
+Temperature is well known to have an effect on shark movement and ecology in general (Schlaff et al 2014 and refs therein). *C. amblyrhyncos* are known to remain resident at Osprey reef (Barnett et al 2012), so the most likely movements will be depth. Temperature readings from sharks occupying surface waters should correspond to SSTs from satellite data:
+
+
+```{r shark-TDdata, message=FALSE, warning=FALSE, include=FALSE}
+source(knitr::purl("../code/eda_shark_td.Rmd", quiet=TRUE))
+```
+
+```{r sharkmaxtemp-v-SST, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  #geom_line(aes(x = week_date, y = weekly_max_temp), data = shark_weekly_temps, colour = "red", lty = '11') +
+  geom_line(aes(x = date, y = daily_max_temp), data = shark_daily_temps, colour = "red") +
+  #geom_line(aes(x = week_date, y = weekly_rolling_mean), data = MODIS_mean, colour = "red") +
+  #geom_line(aes(x = week_date, y = weekly_rolling_mean), data = SSTcomb, colour = "black") +
+  #geom_line(aes(x = date, y = temp), data = CRWdata, colour = "blue") +
+  #geom_line(aes(x = date, y = temp), data = SST4mic, colour = "grey") +
+  #geom_line(aes(x = date, y = temp), data = SST11mic, colour = "grey60", ) +
+  geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 45,  vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+```
+
+Red line = daily max temps recorded by sharks in our study, black line = SSTs from the 11micron daytime MODISA satellite data. On the whole they track together pretty well, but looks like the sharks are running a little hot compared to our remote-sensed SST data.
+
+### Mean daily temperatures
+
+```{r sharkmeantemp-v-SST, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  geom_line(aes(x = date, y = daily_max_temp), data = shark_daily_temps, colour = "red") +
+  geom_line(aes(x = date, y = daily_mean_temp), data = shark_daily_temps, colour = "grey") +
+  geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 45,  vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+```
+
+Red line = daily max temps recorded by sharks in our study, grey line = daily mean temps, black line = SSTs from the 11micron daytime MODISA satellite data. It looks like our sharks are able to down-regulate their mean daily temperatures, particularly in the summer.
+
+### Minimum daily temperatures
+Presumably if mean temperatures are lower than max temperatures, there must be some regular forays into colder water to achieve this.
+
+```{r sharkmintemp-v-SST, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot() +
+  geom_line(aes(x = date, y = daily_max_temp), data = shark_daily_temps, colour = "red") +
+  geom_line(aes(x = date, y = daily_mean_temp), data = shark_daily_temps, colour = "grey") +
+  geom_line(aes(x = date, y = daily_min_temp), data = shark_daily_temps, colour = "blue") +
+  geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 45,  vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+```
+
+Red line = daily max temps recorded by sharks in our study, grey line = daily mean temps, blue line = daily min temps, black line = SSTs from the 11micron daytime MODISA satellite data. It does indeed appear that our sharks are accessing colder waters during the summer period. This is presumably a result of accessing deeper waters. Will check against depth movements to find out.
+
+
+### Maximum, mean and minimum daily depths
+
+```{r shark-daily-depths, echo=FALSE, message=FALSE, warning=FALSE}
+shark_daily_depth_plot
+```
+
+So, as predicted from the max temperatures, daily minimum depths are around 0m (light blue line), which means these animals make regular movements into surface waters (feeding?). Mean depths appear to be somewhat deeper in the summer and maximum daily depths are a lot deeper. By how much? Need to model this with a GAM to assess properly but it looks like winter max depths are on average around 75m, while summer max depths are around 125m:
+
+
+### Summer vs winter max depth comparison
+```{r shark-daily-max-depths-summary}
+shark_daily_depths %>% 
+  mutate(month = month(date, label = TRUE)) %>% 
+  group_by(month) %>% 
+  summarise(mean_daily_max_depth = mean(daily_max_depth))
+```
+
+So maximum summer depths accessed around around 125m, compared to winter where maximum depths were around 75m. Given that the GBR shelf sits at around ~50m, it makes you wonder what these species do to cool down in the summer there? Perhaps there is more latitudinal movement in coastal individuals/populations?
+
+### Summary and next steps
+
+Overall, it appears that there are some readily identifiable patterns in these data, albeit this is only for a single-year period. When plotted together max-depth and max-temp clearly covary in a non-linear way:
+
+```{r summary-plots, echo=FALSE, message=FALSE, warning=FALSE, fig.height=10}
+shark_daily_depth_plot/shark_daily_temps_plot + shark_td_plot
+```
+
+The top plot above shows the combined daily minimum, mean and maximum depths and temps respectively, along with a simple GAM smoother - I am yet to model this properly, but will do as a next step. The figure below that shows the overall relationship between daily max temps and depths - the hotter their daily maximum temp is, the deeper the overall daily depth is. I will run a generalised linear (mixed effect - with individual as the random effect) model on this to quantify.
+
+Proposed next analysis/steps:
+
+- Properly model variations in SST vs Depth over time using GAM
+- Quantify overall relationship between SSTs and max depths via GLMM
+- Investigate if there is a story in individual movements - do downward movements in summer happen at regular time intervals? How long do individuals spend at depth? At this scale there are only 15 individuals so the data may get quite thin. Will see if I can tease this out.
+
+
+
+##### Summary thoughts so far: 
+
+There definitely seems to be a story in here and I am keen to include this in my thesis. I think it fits with the story of how isolated pinnacle/seamount type habitats might actually confer some advantages to coral reef predators, that mitigate their isolation, especially in the context of warming oceans.
+
+
+
+
+
+
+
+
+
+
 

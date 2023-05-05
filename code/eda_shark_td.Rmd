@@ -19,28 +19,26 @@ editor_options:
 ---
 
 
-```{r setup, include=FALSE}
+```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+source("packages.R")
+rm(list=ls()) # Clear out environment if necessary
 ```
 
-# Load required packages
-```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-library(tidyverse)
-```
-
-# Housekeeping
-```{r warning=FALSE}
-#rm(list=ls()) # Clear out environment if necessary
-```
 
 # Load shark T/P data
 ```{r}
-load(file = "../data/Rdata/shark_daily_temps.Rdata")
-load(file = "../data/Rdata/shark_daily_depth.Rdata")
-load(file = "../data/Rdata/shark_tp_data.Rdata")
-
-
+#load(file = "../data/Rdata/shark_daily_temps.Rdata")
+#load(file = "../data/Rdata/shark_daily_depths.Rdata")
+#load(file = "../data/Rdata/shark_tp_data.Rdata")
 ```
+
+```{r echo=FALSE, message=FALSE}
+source(knitr::purl("../code/eda_shark_depth.Rmd", quiet=TRUE))
+source(knitr::purl("../code/eda_shark_temp.Rmd", quiet=TRUE))
+```
+
+
 
 ### Overview depth and temp
 ```{r}
@@ -60,33 +58,33 @@ shark_tp_data %>%
 
 
 ```{r}
-tdplot <- depth_plot/temps_plot
-tdplot
+daily_tdplot <- shark_daily_depth_plot/shark_daily_temps_plot
+daily_tdplot
 ```
 
 ```{r}
-ggsave(filename = "../output/tdplot.png", plot = tdplot, width = 16, height = 10, units = "cm")
+#ggsave(filename = "../output/tdplot.png", plot = tdplot, width = 16, height = 10, units = "cm")
 ```
 
 
 ```{r}
-
 shark_daily_td <- 
   full_join(shark_daily_depths, shark_daily_temps)
-
 ```
 
 
 
 
 ```{r}
+shark_td_plot <- 
 shark_daily_td %>% 
   ggplot() +
   geom_point(aes(x = daily_max_temp, y = daily_max_depth)) +
   #geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "gam", formula = y ~ s(x, bs = 'cs')) +
-  geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "lm")
-
-
+  geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "lm") +
+  theme_minimal() +
+  xlab("Daily maximum temp (°C)") + 
+  ylab("Daily maximum depth (m below sea surface)")
 ```
 
 

@@ -1,5 +1,5 @@
 ---
-title: "Calibrating sensor data"
+title: "Load and wrangle satellite SST data"
 aauthor: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -19,23 +19,46 @@ editor_options:
 ---
 
 
-```{r setup, include=FALSE}
+```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-```
-
-# Load required packages
-```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
-library(tidyverse)
-```
-
-# Housekeeping
-```{r warning=FALSE}
+source("packages.R")
 #rm(list=ls()) # Clear out environment if necessary
 ```
 
-SST data downloaded from the GIOVANNI portal
+# Introduction
 
-Need to trim to dates for detections - check what time span our detections cover
+SST data for Osprey reef downloaded from the GIOVANNI portal:
+SST data (for the period of interest and also averaged monthly means) for Northern Coral Sea Islands downloaded from CRW: https://coralreefwatch.noaa.gov/product/vs/data/northern_coral_sea.txt
+
+# Historic SSTs
+
+## Long term average monthly mean SSTs for Northern Coral Sea Islands:
+```{r}
+AMM_SST <- 
+  read_excel('../data/SST/CRWdata_NCSI_LongTerm.xlsx', skip = 1) %>% 
+  mutate(Month = as_date(paste(2000, Month, 01, sep = "-")))                 # Need to dummy code in year and day in order to have as time series 
+```
+
+## Plot
+```{r}
+AMMplot <- 
+AMM_SST %>% 
+  ggplot() +
+  geom_line(aes(x = Month, y = SST)) +
+  geom_point(aes(x = Month, y = SST)) +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b') +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Averaged monthly mean SST \n (°C)")
+AMMplot
+```
+
+
+
+# SSTs for study period
+
+Have downloaded satellite data (see above for links). Now need to trim to dates for detections - check what time span our detections cover
 
 ```{r}
 #shark_tp_data %>% summarise(min(detection_timestamp), max(detection_timestamp))
@@ -45,239 +68,217 @@ So start end of October 2021 and go until late Feb 2023.
 
 ## Nighttime 11 micron dataset
 ```{r load-SST11, message=FALSE, warning=FALSE}
-SST11mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_NSST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', 
-                     skip = 7) %>% 
-  rename(temp = "MODISA_L3m_NSST_8d_4km_R2019_0_sst") %>% 
-  filter(temp >0,
-         as_date(time) >= as_date("2021-10-20")) %>% 
+SST11mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_NSST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', skip = 7) %>% 
   mutate(date = date(time),
-         satellite = factor('11m_night'), 
-         .keep = "unused") %>% 
-  mutate(year = year(date),
-         week = week(date),           # Need to use isoweek for this dataset
-         year_week = paste(year, week)) %>% 
-  mutate(year_week2 = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0")))
-         
-
-SST11mic   
+         temp = MODISA_L3m_NSST_8d_4km_R2019_0_sst, 
+         satellite = factor('11m_night')) %>% 
+  select(date, temp, satellite) %>% 
+  filter(temp >0,
+         as_date(date) >= as_date("2021-10-20"),
+         as_date(date) <= as_date("2022-10-31"))
 ```
-
-
-
-
-
 
 ## Nighttime 4 micron dataset
 ```{r load-SST4, message=FALSE, warning=FALSE}
-SST4mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST4_8d_4km_R2019_0_sst4.20211019-20230305.146E_13S_146E_13S.csv', 
-                     skip = 7) %>% 
-  rename(temp = "MODISA_L3m_SST4_8d_4km_R2019_0_sst4") %>% 
+SST4mic <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST4_8d_4km_R2019_0_sst4.20211019-20230305.146E_13S_146E_13S.csv', skip = 7) %>% 
+  mutate(date = date(time),
+         temp = MODISA_L3m_SST4_8d_4km_R2019_0_sst4,
+         satellite = factor('4m_night')) %>% 
+  select(date, temp, satellite) %>% 
   filter(temp >0,
-          as_date(time) >= as_date("2021-10-20"))%>% 
-  mutate(date = date(time),        
-         satellite = factor('4m_night'),
-         .keep = "unused") %>% 
-  mutate(year = year(date),
-         week = week(date),                # Need to use normal week for the 2 nighttime datasets or it will calculate first obs for 2023 as Wk 53, 2022!!
-         year_week = paste(year, week)) %>% 
-  mutate(year_week2 = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0")))
-         
+         as_date(date) >= as_date("2021-10-20"),
+         as_date(date) <= as_date("2022-10-31")) 
 ```
 
 ## Daytime 11 micron dataset
 ```{r load-SST11day, message=FALSE, warning=FALSE}
-SST11micday <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', 
-                     skip = 7) %>% 
-  rename(temp = "mean_MODISA_L3m_SST_8d_4km_R2019_0_sst") %>% 
+SST11micday <- read_csv('../data/SST/g4.areaAvgTimeSeries.MODISA_L3m_SST_8d_4km_R2019_0_sst.20211019-20230305.146E_13S_146E_13S.csv', skip = 7) %>% 
+  mutate(date = date(time),
+         temp = mean_MODISA_L3m_SST_8d_4km_R2019_0_sst,
+         satellite = factor('11m_day')) %>% 
+  select(date, temp, satellite) %>% 
   filter(temp >0,
-          as_date(time) >= as_date("2021-10-20"))%>% 
-  mutate(date = date(time), 
-         satellite = factor('11m_day'),
-         .keep = "unused") %>% 
-  mutate(year = year(date),
-         week = week(date),                          # Need to use normal week for the 2 nighttime datasets or it will calculate first obs for 2023 as Wk 53, 2022!!
-         year_week = paste(year, week)) %>% 
-  mutate(year_week2 = str_c(str_sub(isoyear(date), 3, 4),  "/", formatC(isoweek(date), format = "f", digits = 0, width = 2, flag = "0")))
-         
+         as_date(date) >= as_date("2021-10-20"),
+         as_date(date) <= as_date("2022-10-31")) 
 ```
 
-## Check what values these 3 datasets are providing
+
+## CRW dataset
+```{r}
+CRWdata <- read_excel('../data/SST/CRWdata_NCSislands.xlsx') %>% 
+  mutate(date = as_date(paste(YYYY, MM, DD, sep = "-")),
+         temp = SST_MEAN,
+         satellite = factor("CRW_NESDIS")) %>% 
+  select(date, temp, satellite) %>% 
+  filter(temp >0,
+         as_date(date) >= as_date("2021-10-20"),
+         as_date(date) <= as_date("2022-10-31"))
+```
+
+## Check what values these 4 datasets are providing
+
+### CRW only
+```{r}
+CRWplot <- 
+ggplot() +
+  geom_line(aes(x = date, y = temp), data = CRWdata, colour = "red") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+CRWplot
+```
+
+## Just the MODIS datasets
+
+```{r}
+MODISplot <- 
+ggplot() +
+  geom_line(aes(x = date, y = temp), data = SST4mic, colour = "grey") +
+  geom_line(aes(x = date, y = temp), data = SST11mic, colour = "grey60", ) +
+  geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 45,  vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+  
+
+MODISplot
+```
+
+
+## MODIS all together
+This is terrible - don't run
+```{r}
+#MODIS_comb <- 
+#  full_join(SST4mic, SST11mic) %>% 
+#  full_join(SST11micday)
+
+#MODIS_comb %>% 
+#  ggplot() +
+#  geom_line(aes(x = date, y = temp), colour = "black") +
+#  geom_smooth(aes(x = date, y = temp))
+```
+
+
+```{r}
+MODIS_mean <- 
+  full_join(SST4mic, SST11mic) %>% 
+  full_join(SST11micday) %>% 
+  mutate(week_date = floor_date(date, "week")) %>% 
+  group_by(week_date) %>% 
+  summarise(mean_week_temp = mean(temp)) %>% 
+  mutate(lag_mean_week_temp = lag(mean_week_temp),
+         weekly_rolling_mean = (lag_mean_week_temp + mean_week_temp)/2) 
+
+```
+
+```{r}
+MODISmean_vs_CRWplot <- 
+ggplot() +
+  geom_line(aes(x = week_date, y = mean_week_temp), data = MODIS_mean, colour = "blue") +
+  geom_smooth(aes(x = week_date, y = mean_week_temp), data = MODIS_mean, colour = "blue", method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_line(aes(x = date, y = temp), data = CRWdata, colour = "black") +
+  geom_smooth(aes(x = date, y = temp), data = CRWdata, colour = "black", method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 45,  vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+  
+MODISmean_vs_CRWplot
+```
+Looks like seaonal change is later for NCSI area as a whole (centre of polygon is approx. 250km south of Osprey)
+
 ```{r}
 ggplot() +
-  geom_point(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
-  geom_line(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
-  geom_point(aes(x = date, y = temp), data = SST11mic, colour = "red") +
-  geom_line(aes(x = date, y = temp), data = SST11mic, colour = "red") +
-  geom_point(aes(x = date, y = temp), data = SST11micday, colour = "black") +
-  geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
-  theme_minimal()
+  geom_line(aes(x = week_date, y = mean_week_temp), data = MODIS_mean, colour = "blue") +
+  #geom_line(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
+  #eom_line(aes(x = date, y = temp), data = SST11mic, colour = "red") +
+  #geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  geom_line(aes(x = date, y = temp), data = CRWdata, colour = "red") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+  
 ```
 
 
+
+
+
+
+```{r}
+ggplot() +
+  #geom_point(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
+  geom_line(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
+  #geom_point(aes(x = date, y = temp), data = SST11mic, colour = "red") +
+  geom_line(aes(x = date, y = temp), data = SST11mic, colour = "red") +
+  #geom_point(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  #geom_point(aes(x = date, y = temp), data = CRWdata, colour = "orange") +
+  geom_line(aes(x = date, y = temp), data = CRWdata, colour = "orange") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+  
+```
+
+
+
+
+
+```{r}
+ggplot() +
+  geom_line(aes(x = date, y = temp), data = SST4mic, colour = "blue") +
+  geom_line(aes(x = date, y = temp), data = SST11mic, colour = "red") +
+  geom_line(aes(x = date, y = temp), data = SST11micday, colour = "black") +
+  geom_line(aes(x = date, y = temp), data = CRWdata, colour = "orange") +
+  theme_minimal() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Temp (°C)")
+  
+```
+
+
+
+
+# Combined df with all data sources used to inform weekly rolling means
+
+## First need to combine everything
 ```{r}
 SSTcomb <- 
   full_join(SST4mic, SST11mic) %>% 
   full_join(SST11micday) %>% 
-  arrange(year_week2)
+  full_join(CRWdata) %>% 
+  mutate(week_date = floor_date(date, "week")) %>% 
+  group_by(week_date) %>% 
+  summarise(mean_week_temp = mean(temp)) %>% 
+  mutate(lag_mean_week_temp = lag(mean_week_temp),
+         weekly_rolling_mean = (lag_mean_week_temp + mean_week_temp)/2) 
 ```
-
-
-
-
-
 
 ```{r}
-SST_comb2 <- 
-SSTcomb %>% 
-  group_by(year, week, year_week2) %>% 
-  summarise(mean_temp = mean(temp)) %>% 
-  ungroup() %>% 
-  mutate(lag_mean_temp = lag(mean_temp),
-         roll_mean = (lag_mean_temp + mean_temp)/2)
-
-
-SST_comb3 <- 
-SSTcomb %>% 
-  group_by(date) %>% 
-  summarise(mean_temp = mean(temp)) %>% 
-  ungroup() %>% 
-  mutate(lag_mean_temp = lag(mean_temp),
-         roll_mean = (lag_mean_temp + mean_temp)/2)
-
-
+#SST_all_plot <- 
+ ggplot() +
+  geom_line(aes(x = week_date, y = weekly_rolling_mean), data = SSTcomb, colour = "blue") +
+  geom_line(aes(x = week_date, y = weekly_rolling_mean), data = MODIS_mean, colour = "red") +
+  theme(axis.text.x = element_text(angle = 90,  vjust = 0.5)) +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m')
 ```
-
 
 ```{r}
-SST_comb2 %>% 
-  ggplot(aes(x = year_week2, y = roll_mean)) +
-  geom_point(colour = "blue") +
- theme(axis.text.x = element_text(angle = 90))
-SST_comb2 %>% 
-  ggplot(aes(x = year_week2, y = mean_temp)) +
-  geom_point(colour = "blue") +
-  geom_line() +
- theme(axis.text.x = element_text(angle = 90))
+
 ```
-
-
-```{r}
-SST_plot <- SST_comb3 %>% 
-  ggplot(aes(x = date, y = roll_mean)) +
-  geom_point(colour = "blue") +
-  geom_line(colour = "grey") +
-  theme(axis.text.x = element_text(angle = 90))
-
-SST_plot
-```
-
-
-
-
-```{r}
-SSTcomb %>% 
-  mutate(year = year(date),
-         week = isoweek(date),
-         year_week = factor(paste(year, week, sep = "-"))) %>% 
-  group_by(year, week, year_week) %>% 
-  summarise(mean_temp = mean(temp)) %>% 
-  ungroup() %>% 
-  mutate(prior_mean_temp = lag(mean_temp),
-         movavg = (prior_mean_temp + mean_temp)/2)
-```
-
-
-```{r}
-SSTcomb %>% 
-  mutate(year = year(date),
-         week = isoweek(date),
-         year_week = lubridate::parse_date_time(paste(year, week, 1, sep="/"),'Y/W/w')) %>% 
-  group_by(year, week, year_week) %>% 
-  summarise(mean_temp = mean(temp)) %>% 
-  ungroup() %>% 
-  mutate(prior_mean_temp = lag(mean_temp),
-         movavg = (prior_mean_temp + mean_temp)/2)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-ggplot() +
-  geom_point(aes(x = date, y = temp), data = SSTcomb, colour = "blue") +
-  geom_line(aes(x = date, y = temp), data = SSTcomb, colour = "blue")
-```
-
-
-
-
-
-
-```{r}
-SST_2021a <- 
-  SSTcomb %>% 
-  mutate(year = year(time),
-         week = isoweek(time),
-         year_week = factor(paste(year, week, sep = "-"))) %>% 
-  filter(year == 2021) 
-  
-SST_2021b <- 
-  SSTcomb %>% 
-  mutate(year = year(time),
-         week = week(time),
-         year_week = factor(paste(year, week, sep = "-"))) %>% 
-  filter(year == 2021) 
-  
-
-
-SST_2022
-
-
-
-SST_2023
-```
-
-
-```{r}
-SST_2021a
-SST_2021b
-```
-
-
-
-
-
-```{r}
-n <- 2
-
-SST_comb2 <- 
-SSTcomb %>% 
-  mutate(year = year(date),
-         week = isoweek(date),
-         year_week = factor(paste(year, week, sep = "-")),
-         prior_temp = lag(temp),
-         movavg = (prior_temp + temp)/2) 
-  #group_by(fnight = (week-1)%/% 2 + 1) %>% 
-  #mutate(mean_temp = mean(temp)) %>%
-
-SST_comb2
-```
-
-
-```{r}
-SST_comb2 %>% 
-ggplot() +
-  geom_point(aes(x = year_week, y = movavg), colour = "blue") +
-  geom_line(aes(x = year_week, y = movavg), colour = "blue")
-```
-
 
 

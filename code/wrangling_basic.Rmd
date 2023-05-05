@@ -357,6 +357,25 @@ osp_sens_data <- osp_sens_data %>%
   droplevels()
 ```
 
+
+
+
+## Quick checks
+```{r}
+osp_receiver_times <- 
+osp_sens_data %>% 
+  ggplot(mapping = aes(x = detection_timestamp, y = station_name_long)) + 
+  xlab("Date") + 
+  ylab("VR2W Location") +
+  geom_point() +
+  geom_vline(xintercept = as.numeric(osp_sens_data$detection_timestamp[c(5, 803104)])) +
+  theme_light()
+osp_receiver_times
+ggsave(plot = osp_receiver_times, filename = "../output/osp_receiver_times.png", device = 'png', width = 180, height = 100, units = "mm")
+
+```
+
+
 ## Save
 
 ```{r}
