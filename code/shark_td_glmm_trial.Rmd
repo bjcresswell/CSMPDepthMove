@@ -22,7 +22,7 @@ editor_options:
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 source("packages.R")
-rm(list=ls()) # Clear out environment if necessary
+#rm(list=ls()) # Clear out environment if necessary
 ```
 
 
@@ -42,6 +42,8 @@ source(knitr::purl("../code/eda_shark_temp.Rmd", quiet=TRUE))
 ## Need to bring in the individual T/P dataframe:
 ```{r}
 source("individ_daily_td.R")
+shark_1_td %$%
+  summary(Season)
 ```
 
 
@@ -98,34 +100,41 @@ shark_1_td %>%
 sst_maxd_glmm1 <- glmmTMB(daily_max_depth ~ SST + (1|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
 sst_maxd_glmm1a <- glmmTMB(daily_max_depth ~ SST + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
 sst_maxd_glmm2 <- glmmTMB(daily_max_depth ~ Season + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
+sst_maxd_glmm2a <- glmmTMB(daily_max_depth ~ SST + Season + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
 sst_maxd_glmm3 <- glmmTMB(daily_max_depth ~ SST * Season + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
 sst_maxd_glmm4 <- glmmTMB(daily_max_depth ~ SST * Season + Sex + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
 sst_maxd_glmm5 <- glmmTMB(daily_max_depth ~ SST * Season + Sex * TL + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
-
+sst_maxd_glmm5a <- glmmTMB(daily_max_depth ~ SST + Sex * TL + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
 ```
 
 ## Residual diagnostics
 ```{r}
 #plot_model(sst_maxd_glmm3,  type='diag')[-2] %>% plot_grid()
 sst_maxd_glmm1 %>% simulateResiduals(plot=TRUE)
+sst_maxd_glmm1a %>% simulateResiduals(plot=TRUE)
 sst_maxd_glmm2 %>% simulateResiduals(plot=TRUE)
+sst_maxd_glmm2a %>% simulateResiduals(plot=TRUE)
 sst_maxd_glmm3 %>% simulateResiduals(plot=TRUE)
 sst_maxd_glmm4 %>% simulateResiduals(plot=TRUE)
 sst_maxd_glmm5 %>% simulateResiduals(plot=TRUE)
+sst_maxd_glmm5a %>% simulateResiduals(plot=TRUE)
 ```
 ## Check AIC scores
 ```{r}
-AIC(sst_maxd_glmm1, sst_maxd_glmm2, sst_maxd_glmm3, sst_maxd_glmm4, sst_maxd_glmm5)
+AIC(sst_maxd_glmm1, sst_maxd_glmm1a, sst_maxd_glmm2, sst_maxd_glmm2a, sst_maxd_glmm3, sst_maxd_glmm4, sst_maxd_glmm5, sst_maxd_glmm5a)
 ```
 ## R2
 ```{r}
 sst_maxd_glmm1 %>% performance::r2_nakagawa()
+sst_maxd_glmm1a %>% performance::r2_nakagawa()
 sst_maxd_glmm2 %>% performance::r2_nakagawa()
+sst_maxd_glmm2a %>% performance::r2_nakagawa()
 sst_maxd_glmm3 %>% performance::r2_nakagawa()
 sst_maxd_glmm4 %>% performance::r2_nakagawa()
 sst_maxd_glmm5 %>% performance::r2_nakagawa()
+sst_maxd_glmm5a %>% performance::r2_nakagawa()
 ```
-Model 5 best fit with fixed factors explaining 38% of the variance (marginal/pseudo R2) and lowest AIC. Also has all the required terms we are interested in. Will move forward with this model, but first note the random effect (individual - slope and intercept) is also explaining a chunk of the variance - indicates substantial individual level differences.
+Model 5 best fit with fixed factors explaining 38% of the variance (marginal/pseudo R2) and lowest AIC. Also has all the required terms we are interested in. Will move forward with this model, but first note the random effect (individual - slope and intercept) is also explaining a chunk of the variance - indicates substantial individual level differences. I do have some nervousness about co-modelling SST and Season... Model 5a has Season taken out and SST interacting with the other terms
 
 ## Summary table
 ```{r}
@@ -139,7 +148,7 @@ sst_maxd_glmm5 %>% ranef()
 
 # Quick overview of effects and interactions:
 
-## Simple fixed effects
+## Simple fixed effects - Model 5
 ```{r}
 sst_maxd_glmm5 %>% ggemmeans(~ Season) %>% plot
 sst_maxd_glmm5 %>% ggemmeans(~ SST) %>% plot
@@ -152,6 +161,12 @@ Looks like separately, there are some significant effects here:
 - Effect of sex: looks like some differences here but non-significant. Bayesian approach would probably allow quantification of this?
 - Effect of size: again looks like there might be a pattern (smaller individuals going deeper), but this might be non-significant. Would need to do some planned contrasts to check.
 
+## Simple fixed effects - Model 5a
+```{r}
+sst_maxd_glmm5a %>% ggemmeans(~ SST) %>% plot
+sst_maxd_glmm5a %>% ggemmeans(~ Sex) %>% plot
+sst_maxd_glmm5a %>% ggemmeans(~ TL) %>% plot
+```
 
 
 ## Interaction terms:
@@ -167,45 +182,54 @@ Quick interpretation - on average deeper in the summer, shallower in the winter 
 ```{r}
 sst_maxd_glmm5 %>% ggemmeans(~ Sex*TL) %>% plot
 sst_maxd_glmm5 %>% ggemmeans(~ TL*Sex) %>% plot
+sst_maxd_glmm5a %>% ggemmeans(~ Sex*TL) %>% plot
+sst_maxd_glmm5a %>% ggemmeans(~ TL*Sex) %>% plot
 ```
+
 
 ### SST and sex 
 We know (from the above) that males may remain a little deeper than females, but do they respond differently to SSTs or in the same way?
 ```{r}
 sst_maxd_glmm5 %>% ggemmeans(~ SST * Sex) %>% plot
 sst_maxd_glmm5 %>% ggemmeans(~ Sex * SST) %>% plot
+sst_maxd_glmm5a %>% ggemmeans(~ SST) %>% plot
+sst_maxd_glmm5a %>% ggemmeans(~ Sex) %>% plot
 ```
 
-Looks like higher SSTs drive both males and females deeper
+Looks like higher SSTs drive both males and females deeper.
+
+## Quantify some of these patterns in emmeans
 
 ```{r}
-sst_maxd_glmm3 %>% 
-  emmeans( ~ Season) %>% 
-  contrast() %>% 
-  confint()
+sst_maxd_glmm5 %>% ggemmeans(~ Season) %>% plot
+sst_maxd_glmm5 %>% emmeans(pairwise ~ Season)
 ```
+At the mean SST there are significant differences in all season pairwise contrasts except Autumn - Spring
+However, note the warning about interactions:
 
 
-## What about just sex and size as a determinant of depths used?
-Need Sex and Size to interact, with individual as random effect
 ```{r}
-td_ss1 <- glmmTMB(daily_max_depth ~ Sex * TL + (1|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
-td_ss2 <- glmmTMB(daily_max_depth ~ Sex * TL + (SST|transmitter_id), data = shark_1_td, family = gaussian(), REML = TRUE)
+sst_maxd_glmm5a %>% ggemmeans(~ SST * Sex) %>% plot
+sst_maxd_glmm5a %>% ggemmeans(~ SST * TL) %>% plot
+
+sst_maxd_glmm5a %>% emmeans(~ SST)
+sst_maxd_glmm5a %>% emtrends("Sex", var = "SST")# %>% contrast()
 ```
 
-## AIC
 ```{r}
-AIC(td_ss1, td_ss2)
+sst_maxd_glmm5 %>% ggemmeans(~ SST * Season) %>% plot
+sst_maxd_glmm5 %>% emtrends("Season", var = "SST") %>% contrast()
 ```
 
 
-## Contrastss
-```{r}
-td_ss1 %>% ggemmeans(~ Sex) %>% plot
-td_ss1 %>% ggemmeans(~ Sex * TL) %>% plot
-td_ss2 %>% ggemmeans(~ Sex) %>% plot
-td_ss2 %>% ggemmeans(~ Sex * TL) %>% plot
-```
-So it looks like overall, small males and females might avoid each other bit via depth, but overlap as they get older/bigger/to maturity. Makes sense? Need to conduct some planned contrasts I think if I want to state this..
+
+
+
+
+
+
+
+
+
 
 

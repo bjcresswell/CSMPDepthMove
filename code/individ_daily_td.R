@@ -37,7 +37,8 @@ shark_1_td <-
     date >= date("2022-07-01") & date<= date("2022-09-30") ~ "Winter",
     date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
     date < date("2022-12-31")  ~ "Spring",
-    date > date("2022-09-30") ~ "Spring")))
+    date > date("2022-09-30") ~ "Spring"))) %>% 
+  filter(date > date("2021-10-27"))
 
 # Checks
 shark_1_td %$% summary(Season) # Should all be assigned to a season
