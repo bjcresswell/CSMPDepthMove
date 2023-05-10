@@ -1,9 +1,12 @@
 ---
-title: "Initial data exploration: Regulation of temperature via depth in response to seasonal changes in SST in *Carcharhinus amblyrhynchos*"
+title: 'Initial data exploration: Regulation of temperature via depth in response
+  to seasonal changes in SST in *Carcharhinus amblyrhynchos*'
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: 
- html_document:
+output:
+  pdf_document:
+    toc: yes
+  html_document:
     code_folding: show
     collapse: no
     df_print: paged
@@ -14,7 +17,9 @@ output:
     theme: spacelab
     toc: yes
     toc_float: yes
-editor_options: 
+  word_document:
+    toc: yes
+editor_options:
   chunk_output_type: inline
 ---
 
@@ -203,7 +208,7 @@ So maximum summer depths accessed around around 125m, compared to winter where m
 
 Overall, it appears that there are some readily identifiable patterns in these data, albeit this is only for a single-year period. When plotted together max-depth and max-temp clearly covary in a non-linear way:
 
-```{r summary-plots, echo=FALSE, message=FALSE, warning=FALSE, fig.height=10}
+```{r summary-plots, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8}
 shark_daily_depth_plot/shark_daily_temps_plot + shark_td_plot
 ```
 

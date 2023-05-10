@@ -1,0 +1,257 @@
+---
+title: "Modelling - shark temperature and depth"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("packages.R")
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+
+```{r echo=FALSE, message=FALSE}
+source(knitr::purl("../code/eda_shark_depth.Rmd", quiet=TRUE))
+source(knitr::purl("../code/eda_shark_temp.Rmd", quiet=TRUE))
+```
+
+
+## To model temp vs depth, will need to do a few preliminary steps:
+
+1. Decide temporal scale - daily, weekly, monthly?
+2. Decide actual response - maximums, means, minimums? What about variability?
+3. Wrangle data according to the above and ensure transmitter_id is kept in as we'll need it as a random effect in any model
+
+## Let's start out with daily values - will need to calculate these separately (T vs P) and then combine together
+
+### Depth
+```{r}
+shark_1_d <- 
+  shark_tp_data %>% 
+  mutate(date = date(detection_timestamp)) %>% 
+  filter(!is.na(Depth)) %>% 
+  group_by(transmitter_id, date) %>% 
+  summarise(daily_max_depth = max(Depth),
+            daily_min_depth = min(Depth),
+            daily_mean_depth = mean(Depth)) %>% 
+  mutate(daily_min_depth = if_else(daily_min_depth <0, 0, daily_min_depth))
+shark_1_d
+```
+
+### Temp
+```{r}
+shark_1_t <- 
+  shark_tp_data %>% 
+  mutate(date = date(detection_timestamp)) %>% 
+  filter(!is.na(Temp)) %>% 
+  group_by(transmitter_id, date) %>% 
+  summarise(daily_max_temp = max(Temp),
+            daily_min_temp = min(Temp),
+            daily_mean_temp = mean(Temp))
+
+shark_1_t
+```
+
+## We also will need SST as a predictor for max depth 
+The only data set we have at a daily temporal scale is CRW (for the moment) so we'll use that for now
+Combine together
+```{r}
+shark_1_td <- 
+  full_join(shark_1_d, shark_1_t) %>% 
+  full_join(CRWdata) %>% 
+  rename(SST = temp)
+```
+
+```{r}
+shark_1_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST)) +
+  geom_line(aes(x = date, y = daily_max_depth)) +
+  facet_wrap( ~ transmitter_id)
+
+```
+
+
+
+
+
+
+# Had better check distributions so we know how to model
+## Depth distribution
+```{r}
+shark_1_td %>% 
+  ggplot() +
+  geom_histogram(aes(x = daily_max_depth))
+
+shark_1_td %>% 
+  ggplot() +
+  geom_histogram(aes(x = daily_mean_depth))
+
+shark_1_td %>% 
+  ggplot() +
+  geom_histogram(aes(x = daily_max_depth))
+
+```
+
+## Temp histograms
+```{r}
+shark_1_td %>% 
+  ggplot() +
+  geom_histogram(aes(x = daily_max_temp))
+
+shark_1_td %>% 
+  ggplot() +
+  geom_histogram(aes(x = daily_mean_temp))
+
+shark_1_td %>% 
+  ggplot() +
+  geom_histogram(aes(x = daily_max_temp))
+```
+
+
+
+
+
+
+
+# Model fitting
+
+Model formula will be:
+```{r}
+td.form <- bf(daily_max_depth ~ SST + (1|transmitter_id), family = "gaussian")
+```
+
+We can see what priors we need to specify for such a model and what the default priors would be if we don't specify
+```{r}
+get_prior(daily_max_depth ~ SST + (1|transmitter_id), family = "gaussian", data = shark_1_td)
+```
+I would quite like to see what these priors look like:
+```{r}
+standist::visualize("student_t(3, 49.1, 36.4)",
+                     "student_t(3, 0, 36.4)",
+                     "normal(0, 1)",
+                    "gamma(5,0.1)",
+                    "gamma(5,1)",
+                    "cauchy(0,5)")
+```
+
+
+```{r}
+priors <- prior(normal(35,5), class = 'Intercept') +
+    prior(normal(0, 10), class = 'b') +
+    prior(gamma(2,0.5), class = 'sigma') +
+    prior(normal(0,5), class = 'sd') 
+```
+
+
+
+# Prior only model
+
+```{r}
+prior_mod <- brm(td.form, 
+                  data = shark_1_td,
+                  prior = priors,
+                  sample_prior = 'only',
+                  iter = 5000,
+                  warmup = 2500,
+                  chains = 3,
+                  thin = 5,
+                  refresh = 0#,
+                  #backend = "cmdstanr"
+                 )
+```
+
+## Chain diagnostics
+```{r}
+plot(prior_mod)
+```
+
+
+```{r}
+prior_mod %>% 
+conditional_effects() %>%
+    plot(points = TRUE)
+
+```
+
+```{r}
+td_mod <- brm(td.form, 
+                  data = shark_1_td,
+                  prior = priors,
+                  sample_prior = 'yes',
+                  iter = 5000,
+                  warmup = 2500,
+                  chains = 3,
+                  thin = 5,
+                  refresh = 0,
+                  backend = "cmdstanr"
+                 )
+```
+
+
+```{r}
+td_mod %>% 
+conditional_effects() %>%
+    plot(points = TRUE)
+
+```
+
+
+
+```{r}
+td_mod %>% get_variables()
+```
+
+
+
+```{r}
+td_mod %>% hypothesis("SST=25")
+td_mod %>% hypothesis("SST=30")
+td_mod %>% hypothesis("SST=30") %>% plot()
+
+```
+
+# Chain diagnostics
+
+## Autocorrelation
+```{r mcmc-acf}
+td_mod$fit %>%
+    stan_ac(pars = params)
+```
+
+
+```{r}
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

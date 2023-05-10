@@ -64,13 +64,14 @@ teleost_tp_data %>%
   ggplot() +
   geom_point(aes(x = date, y = daily_max_depth), colour = "red") +
   geom_point(aes(x = date, y = daily_min_depth), colour = "blue") +
-  facet_wrap(~TID_spp) +
+  scale_x_date(date_breaks = "2 months", date_labels = '%b') +
+  scale_y_reverse() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   theme_minimal() +
   xlab('\n Date')+
   ylab('Depth \n (m below sea surface)') +
-  scale_x_date(date_breaks = "2 months", date_labels = '%b') +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) 
+  facet_wrap(~TID_spp)
+
 
 
 ```

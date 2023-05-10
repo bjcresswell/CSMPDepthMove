@@ -1,46 +1,21 @@
----
-title: "Exploratory data analysis - shark temperature and depth"
-author: "Ben Cresswell"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: 
- html_document:
-    code_folding: show
-    collapse: no
-    df_print: paged
-    fig_caption: yes
-    fig_height: 4
-    fig_width: 4
-    highlight: textmate
-    theme: spacelab
-    toc: yes
-    toc_float: yes
-editor_options: 
-  chunk_output_type: inline
----
-
-
-```{r include=FALSE}
+## ----include=FALSE------------------------------------------------------------
 knitr::opts_chunk$set(echo = TRUE)
-getwd()
 source("packages.R")
 rm(list=ls()) # Clear out environment if necessary
-```
 
 
-# Load shark T/P data
-```{r}
+## -----------------------------------------------------------------------------
 #load(file = "../data/Rdata/shark_daily_temps.Rdata")
 #load(file = "../data/Rdata/shark_daily_depths.Rdata")
 #load(file = "../data/Rdata/shark_tp_data.Rdata")
-```
 
-```{r echo=FALSE, message=FALSE}
+
+## ----echo=FALSE, message=FALSE------------------------------------------------
 source(knitr::purl("../code/eda_shark_depth.Rmd", quiet=TRUE))
 source(knitr::purl("../code/eda_shark_temp.Rmd", quiet=TRUE))
-```
 
-### Overview depth and temp
-```{r}
+
+## -----------------------------------------------------------------------------
 shark_tp_data %>% 
   #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
   ggplot() +
@@ -51,28 +26,23 @@ shark_tp_data %>%
   #filter(transmitter_id == "A69-9004-14037") %>%   # If you want to look at one individual
   ggplot() +
   geom_point(aes(x = detection_timestamp, y = Temp)) 
-```
 
 
-```{r}
+## -----------------------------------------------------------------------------
 daily_tdplot <- shark_daily_depth_plot/shark_daily_temps_plot
 daily_tdplot
-```
 
-```{r}
+
+## -----------------------------------------------------------------------------
 #ggsave(filename = "../output/tdplot.png", plot = tdplot, width = 16, height = 10, units = "cm")
-```
 
 
-```{r}
+## -----------------------------------------------------------------------------
 shark_daily_td <- 
   full_join(shark_daily_depths, shark_daily_temps)
-```
 
 
-
-## T vs D regression
-```{r}
+## -----------------------------------------------------------------------------
 shark_td_plot <- 
 shark_daily_td %>% 
   ggplot() +
@@ -82,40 +52,4 @@ shark_daily_td %>%
   theme_minimal() +
   xlab("Daily maximum temp (°C)") + 
   ylab("Daily maximum depth (m below sea surface)")
-shark_td_plot
-```
-
-
-
-# What about at individual level?
-
-
-
-```{r}
-shark_1_d <- 
-  shark_tp_data %>% 
-  mutate(date = date(detection_timestamp)) %>% 
-  filter(!is.na(Depth)) %>% 
-  group_by(transmitter_id, date) %>% 
-  summarise(daily_max_depth = max(Depth),
-            daily_min_depth = min(Depth),
-            daily_mean_depth = mean(Depth)) %>% 
-  mutate(daily_min_depth = if_else(daily_min_depth <0, 0, daily_min_depth))
-shark_1_d
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
