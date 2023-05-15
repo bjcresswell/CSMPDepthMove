@@ -1,6 +1,6 @@
 ---
-title: 'Initial data exploration: Regulation of temperature via depth in response
-  to seasonal changes in SST in *Carcharhinus amblyrhynchos*'
+title: "`Initial data exploration: Regulation of temperature via depth in response
+  to seasonal changes in SST in *Carcharhinus amblyrhynchos*`"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -41,26 +41,27 @@ This document provides an initial overview into the temperature and pressure (i.
 
 ### Long-term annual SST patterns in the northern Coral Sea
 
-I used Coral Reef Watch's virtual station for the Northern Coral Sea Islands to obtain long-term monthly mean SSTs for the region. Reefs of the northern Coral Sea experience annual fluctuations of about 4-5°C with peak summer mean temperatures occurring around Jan-Feb and winter minimum means around August. Note that the virtual station that these data pertain to is a polygon centered on Long: 149.35  Lat: -16.00, which is in between Willis Island and Moore reef, approx 250km south of Osprey. I am currently investigating options for calculating long term mean temps for Osprey from other satellite and in-situ data, but I think the pattern will be broadly correct, as will be seen below when we compare to both satellite data for the year of study and the temperatures logged by the sharks. Long term data available at: coralreefwatch.noaa.gov/product/vs/data/northern_coral_sea
+I used SST data from NOAA's geo-polar satellite-mounted radiometers (as per Coral Reef Watch's virtual stations) for the pixel covering Osprey reef. The reef experiences annual fluctuations of about 4-5°C with peak summer mean temperatures occurring around Jan-Feb and winter minimum means around August.Temperatures for the year in the present study (Oct 2021 - Oct 2022) were on average 
 
-```{r CRW-LT, echo=FALSE, fig.cap="Avg monthly mean SSTs for the Northern Coral Sea Islands (taken from: https://coralreefwatch.noaa.gov/product/vs/data/northern_coral_sea.txt)"}
-source(knitr::purl("../code/wrangling_SSTdata.Rmd", quiet=TRUE))
-AMMplot
+```{r CRW-LT, echo=FALSE}
+source("wrangling_SSTdata.R")
 ```
 
 ### SST variation during study period
+To obtain SST values for the study period I used data from the same platform as above. Temperatures were generally higher throughout the year than the long term average monthly means, with monthly average differences of c.1.5°C (±0.5 SD)
+```{r}
+SSTvsClimatology
+anomaly_plot
+anomaly %>% 
+  select(!Month) %>% 
+  rename(AMM = SST)
+avg_anomaly
 
-For SST values for the study period I used two forms of remote-sensed (satellite) data:
 
-1. The same CRW virtual station provides daily SST values from NOAA's GOES/NESDIS satellite platform so I downloaded these via the same link as above. The main "downside" of these data are that they do not provide SST values from Osprey itself, but rather from a larger area in the general region. The upside is that you can get daily values.
-
-2. NASA's GIOVANNI data portal provides access area-averaged historic/time-series SST data recorded by their MODIS-Aqua (MODISA) satellite. The satellite has 4 and 11micron sensors on it and collects readings every 8 days, with the 11micron You are able to specify a 4x4km bounding box on an area of your choice so the upside is the spatial accuracy, while the downside is that you only get ~3 readings per month. 
-
-SSTs from the two sources are actually very similar in terms of overall patterns. During the period of interest (October 2021 - October 2022), the region experienced temperature fluctuations of approximately this magnitude, as did Osprey Reef itself, with an extended summer of peak temperatures ~30°C from Dec 2021 - Mar 2022.
-
-```{r CRW-MODIS, echo=FALSE, fig.cap="Left fig: Daily mean SSTs for the NCSI region; Fight fig. 8-day mean SSTs taken from MODISA 4micron night in light-grey, 11micron night in mid-grey, 11micron day in dark-grey.", fig.width = 10}
-CRWplot + MODISplot 
 ```
+
+
+
 
 ### Sea temperature attenuation with depth
 
