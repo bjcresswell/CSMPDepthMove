@@ -1,6 +1,6 @@
 ---
-title: "`Initial data exploration: Regulation of temperature via depth in response
-  to seasonal changes in SST in *Carcharhinus amblyrhynchos*`"
+title: "Initial data exploration: Regulation of temperature via depth in response
+  to seasonal changes in SST in *Carcharhinus amblyrhynchos*"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -31,7 +31,7 @@ knitr::opts_chunk$set(
 	warning = FALSE
 )
 source("packages.R")
-#rm(list=ls()) # Clear out environment if necessary
+rm(list=ls()) # Clear out environment if necessary
 ```
 
 ### Introduction
@@ -44,7 +44,8 @@ This document provides an initial overview into the temperature and pressure (i.
 I used SST data from NOAA's geo-polar satellite-mounted radiometers (as per Coral Reef Watch's virtual stations) for the pixel covering Osprey reef. The reef experiences annual fluctuations of about 4-5°C with peak summer mean temperatures occurring around Jan-Feb and winter minimum means around August.Temperatures for the year in the present study (Oct 2021 - Oct 2022) were on average 
 
 ```{r CRW-LT, echo=FALSE}
-source("wrangling_SSTdata.R")
+getwd()
+source("00_wrangle/wrangling_SSTdata.R")
 ```
 
 ### SST variation during study period
@@ -56,8 +57,6 @@ anomaly %>%
   select(!Month) %>% 
   rename(AMM = SST)
 avg_anomaly
-
-
 ```
 
 
@@ -65,12 +64,13 @@ avg_anomaly
 
 ### Sea temperature attenuation with depth
 
-Any organism living in surface waters will consequently experience these temperature fluctuations. However the deep reef walls of Coral Sea seamount reefs are open to deep pelagic water extending to kms, a pattern that probably needs quantifying in the context of this study. In the tropics temperature is known to decrease with depth in a non-linear and seasonably-varying fashion, so at least one summer and one winter profile would be good to have. For the former, I used the seawater temperature metadata recorded by ROV deployments at Osprey reef:
+Any organism living in surface waters will consequently experience these temperature fluctuations and anomalies. However the deep reef walls of Coral Sea seamount reefs are open to deep pelagic water extending to kms potentially providing access to cooler water during summer temperatures. In the tropics temperature is known to decrease with depth in a non-linear and seasonably-varying fashion, but this needs quantifying for Osprey Reef. Unfortunately temperature profile data are limited for this location, however we do have access to temperature metadata recorded by our ROV deployments at Osprey reef as well as 
 
 ### Summer depth-temperature profile
 
 ```{r B-ROV-td, echo=FALSE, fig.width = 10}
-source(knitr::purl("../code/wrangling_ROVdata.Rmd", quiet=TRUE))
+getwd()
+source("00_wrangle/wrangling_ROVdata.R")
 BLUEROVplot + ROV_GAMplot
 ```
 
@@ -89,8 +89,12 @@ For winter temperature profiles, I used CTD data from a single drop by RV Falkor
 
 ```{r Osprey-CTD, echo=FALSE, fig.width = 10}
 #setwd('../code')
-source("CTDwrangle.R")
+getwd()
+source("00_wrangle/wranglingCTD.R")
+```
 
+
+```{r Osprey-CTD, echo=FALSE, fig.width = 10}
 osp_ctd1 <- 
 osprey_ctd %>% 
   filter(depth <101) %>% 
@@ -107,7 +111,7 @@ osprey_ctd %>%
   filter(depth <101) %>% 
   ggplot() +
   geom_smooth(aes(x = temperature, y = -depth), colour = "blue") +
-  geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red") +
+  geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red", method = "loess") +
   scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
   theme_minimal() +
   xlab("Temp (°C)") + 
@@ -125,7 +129,7 @@ The above figure shows the approx 5°C difference in SST between seasons and the
 Temperature is well known to have an effect on shark movement and ecology in general (Schlaff et al 2014 and refs therein). *C. amblyrhyncos* are known to remain resident at Osprey reef (Barnett et al 2012), so the most likely movements will be depth. Temperature readings from sharks occupying surface waters should correspond to SSTs from satellite data:
 
 
-```{r shark-TDdata, message=FALSE, warning=FALSE, include=FALSE}
+```{r shark-TDdata, message=FALSE, warning=FALSE, include=FALSE, echo=FALSE}
 source(knitr::purl("../code/eda_shark_td.Rmd", quiet=TRUE))
 ```
 
