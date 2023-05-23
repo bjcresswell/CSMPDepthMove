@@ -1,0 +1,245 @@
+---
+title: "Calibrating sensor data"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source('../packages.R')
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+# Load data
+
+```{r}
+load("../../../CSMPWrangling/data/RData/alldata.RData")
+```
+
+## Filter out Osprey sensor data
+```{r}
+osp_sens_data <- 
+  alldata %>% 
+  filter(installation_name == 'Osprey') %>% 
+  filter(Type != "pinger") %>% 
+  droplevels()
+```
+
+# Checks
+Should have 14 individual stations in the dataset
+```{r}
+summary(osp_sens_data$station_name_long)
+```
+
+## Check how many animals
+Should have 25 tagged animals - compare database to project tag list.
+
+### Load project tag list
+```{r}
+load("../../../CSMPWrangling/data/RData/project_tag_list.RData")
+```
+
+```{r}
+osp_sens_data %>% 
+  filter(Type == "temp")  %>% 
+  group_by(transmitter_id, Scientific_name) %>% 
+  distinct(Scientific_name)  %$% 
+  summary(Scientific_name)
+
+project_tag_list %>% 
+  #filter(Type != "pinger") %$% 
+  filter(Type == "temp")  %>% 
+  droplevels() %$% 
+  summary(Scientific_name)
+
+```
+
+# Missing 2 GTs
+```{r}
+project_tag_list %>% 
+  filter(Org_type == "Teleost") %>% 
+  filter(Type == "temp") %>% 
+  #distinct(transmitter_id) %>% 
+  anti_join(osp_sens_data) %>% 
+  arrange(transmitter_id)
+```
+
+Two GTs tagged in March 2022 are completely missing from study. These were tagged in a slightly different location (Entrance - WPT120) so this might explain the absence..
+
+
+
+## Check detection timing
+```{r}
+osp_sens_data %>% 
+group_by(station_name_long) %>% 
+  summarise(first_detection = min(detection_timestamp),
+            last_detection = max(detection_timestamp)) %>% 
+  mutate(deploy_duration = round(last_detection - first_detection, 0))
+```
+
+
+## Quick visual checks
+```{r}
+osp_receiver_times <- 
+osp_sens_data %>% 
+  ggplot(mapping = aes(x = detection_timestamp, y = station_name_long)) + 
+  xlab("Date") + 
+  ylab("VR2W Location") +
+  geom_point() +
+  geom_vline(xintercept = as.numeric(osp_sens_data$detection_timestamp[c(5, 709325)])) +
+  theme_light()
+osp_receiver_times
+ggsave(plot = osp_receiver_times, filename = "../output/osp_receiver_times.png", device = 'png', width = 180, height = 100, units = "mm")
+
+```
+
+May need to cut the data off at the end of Oct 2022 as we only have 3 receivers with any data past that point (and critically North Horn, which has the most data, ends there also)
+
+## Assign just one transmitter id to each sensor tag
+
+Currently each animal has 2 x transmitter IDs for their tag - one for temp and one for pressure. If we want to to look at individual animal patterns we'll need to combine these. First will need to check which transmitter IDs go together, based on the serial number (which is the same for both T and P components):
+```{r}
+osp_sens_data %>% 
+  dplyr:: select(transmitter_id, Serial, Org_type, Type) %>% 
+  distinct() %>% 
+  arrange(transmitter_id)
+```
+
+Sharks: a lower-even ID for temp goes with a higher-odd ID for press: Need to +1 to every temp/even ID
+Teleosts: a lower-odd ID for temp goes with a higher-even ID for press: Need to +1 to every temp/odd ID
+
+We'll do this and at the same time will calibrate using the calibration coefficients (slope and intercept) for the tags as provided by Vemco.
+
+# Sharks
+Calibration coefficients:
+
+    Slope	    Intercept
+P   0.9097	  -3.6388
+T   0.1575	  -5.157
+
+# Calculate temp
+```{r}
+shark_temp_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Elasmobranch") %>% 
+  filter(ID %% 2 != 1)  %>% 
+  #dplyr::select(transmitter_id) %>% 
+  mutate(ID = ID+1) %>% 
+  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-'))) %>% 
+  mutate(Temp = `Sensor.Value` * Slope + Intercept)
+
+```
+
+# Calculate depth 
+```{r}
+shark_press_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Elasmobranch") %>% 
+  filter(Type =="press") %>% 
+  mutate(Depth = `Sensor.Value` * Slope + Intercept)
+```
+
+# Combine together so that temp and depth in the same dataframes
+```{r}
+shark_tp_data <- 
+  shark_temp_data %>% 
+  full_join(shark_press_data) %>% 
+  dplyr::select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date_tagged, 
+         Location_tagged, Site_tagged, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
+  filter(!grepl("Lagoon", station_name_long),        # just a few shark detections (2 individs 14041 and 14059) from lagoon1 so filtering out
+#         station_name_long != "Overnight_Mooring"   # may need to leave ONM out as it only has shallow/hot detections but will leave in for now
+         ) %>%  
+  filter(detection_timestamp < as.Date("2022-11-01 00:00:01")) %>% 
+  arrange(detection_timestamp) %>% 
+  droplevels()
+```
+
+
+# Checks
+```{r}
+shark_tp_data # No. of observations ~ 725,224
+# Note this number is lower than the total # of shark observations as we've filtered out post-Oct2022
+ osp_sens_data %>%
+  filter(Org_type == "Elasmobranch") 
+```
+
+
+```{r}
+shark_tp_data %$% summary(transmitter_id) # No. of individuals detected - all 15 sharks show up at some point & have 1000's of obs for each
+#shark_tp_data  %>% distinct(transmitter_id) # Alternative summary
+shark_tp_data %$% summary(station_name_long) # No. of individuals detected - all 15 sharks show up at some point & have 1000's of obs for each
+
+```
+# Save
+```{r}
+save(shark_tp_data, file = "../../data/Rdata/shark_tp_data.Rdata")
+```
+
+
+# Teleosts
+Calibration coefficients:
+
+     Slope	    Intercept
+P    0.6065	  -2.4258ø
+T    0.1575	  -5.157
+
+# Calculate temp
+```{r}
+teleost_temp_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Teleost") %>% 
+  filter(ID %% 2 == 1)  %>% 
+  #dplyr::select(transmitter_id) %>% 
+  mutate(ID = ID+1) %>% 
+  mutate(transmitter_id = factor(paste(Freq, Space, ID, sep = '-'))) %>% 
+  mutate(Temp = `Sensor.Value` * Slope + Intercept)
+```
+
+# Calculate depth
+```{r}
+teleost_press_data <- 
+  osp_sens_data %>%
+  filter(Org_type == "Teleost") %>% 
+  filter(Type =="press") %>% 
+  mutate(Depth = `Sensor.Value` * Slope + Intercept)
+```
+
+# Combine together so that temp and depth in the same dataframes
+```{r}
+teleost_tp_data <- 
+  teleost_temp_data %>% 
+  full_join(teleost_press_data) %>% 
+  select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date_tagged, 
+         Location_tagged, Site_tagged, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
+  arrange(detection_timestamp) %>%   
+  droplevels()
+```
+
+# Checks
+```{r}
+teleost_tp_data # No. of observations ~ 41,000
+teleost_tp_data %$% summary(transmitter_id) # No. of individuals detected - only 8 individuals. Already established we are missing 2 GTs
+```
+
+Only have good #s of detections for a couple of individuals.
+
+# Save
+```{r}
+save(teleost_tp_data, file = "../../data/Rdata/teleost_tp_data.Rdata")
+```
+
