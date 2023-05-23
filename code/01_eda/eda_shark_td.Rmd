@@ -1,0 +1,132 @@
+---
+title: "Exploratory data analysis - shark temperature and depth"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+getwd()
+source("../packages.R")
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+# Load shark T/P data
+```{r}
+#load(file = "../data/Rdata/shark_daily_temps.Rdata")
+#load(file = "../data/Rdata/shark_daily_depths.Rdata")
+#load(file = "../data/Rdata/shark_tp_data.Rdata")
+```
+
+```{r echo=FALSE, message=FALSE}
+source(knitr::purl("eda_shark_depth.Rmd", quiet=TRUE))
+```
+
+
+```{r echo=FALSE, message=FALSE}
+source(knitr::purl("eda_shark_temp.Rmd", quiet=TRUE))
+```
+
+# Load SST data
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=6}
+setwd("../")
+source("00_wrangle/wrangling_SSTdata.R")
+```
+
+
+
+### Overview depth and temp
+```{r}
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse()
+
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%   # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) 
+```
+
+
+```{r}
+daily_tdplot <- shark_daily_depth_plot/shark_daily_temps_plot
+daily_tdplot
+```
+
+```{r}
+#ggsave(filename = "../output/tdplot.png", plot = tdplot, width = 16, height = 10, units = "cm")
+```
+
+## Combine daily temp, press and SST data together
+
+```{r}
+shark_daily_td <- 
+  SST %>% 
+  full_join(shark_daily_depths) %>% 
+  full_join(shark_daily_temps)
+```
+
+
+
+## T vs D regression
+```{r}
+shark_td_lm_plot <- 
+shark_daily_td %>% 
+  ggplot() +
+  geom_point(aes(x = SST, y = daily_max_depth)) +
+  #geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_smooth(aes(x = SST, y = daily_max_depth), method = "lm") +
+  theme_minimal() +
+  ylab("Daily maximum depth (mbsl)") + 
+  xlab("SST")
+shark_td_lm_plot
+```
+
+It looks like the 5°C difference (summer vs winter) leads to a 50m difference in maximum daily depths, from 60 - 120m
+
+
+
+## Individual
+```{r}
+shark_individual_daily_td <- 
+ shark_individual_daily_depths %>% 
+  full_join(shark_individual_daily_temps)
+```
+
+```{r}
+shark_td_lm_individ_plot <- 
+shark_individual_daily_td %>% 
+  ggplot() +
+  geom_point(aes(x = SST, y = daily_max_depth)) +
+  #geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_smooth(aes(x = SST, y = daily_max_depth), method = "lm") +
+  theme_minimal() +
+  ylab("Daily maximum depth (mbsl)") + 
+  xlab("SST") +
+  facet_wrap(facets = "transmitter_id")
+shark_td_lm_individ_plot
+```
+
+
+```{r}
+# END
+```
+
