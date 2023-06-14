@@ -1,5 +1,5 @@
 ---
-title: "Modelling - shark temperature and depth"
+title: "Modelling - shark temperature and depth - Bayesian"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -27,36 +27,35 @@ source("packages.R")
 
 
 
-```{r echo=FALSE, message=FALSE}
-source(knitr::purl("../code/eda_shark_depth.Rmd", quiet=TRUE))
-source(knitr::purl("../code/eda_shark_temp.Rmd", quiet=TRUE))
-source("individ_daily_td.R")
-```
-
-
-```{r}
-shark_1_td %>% 
-  filter(is.na(daily_max_depth))
-```
-
+## NEED TO RUN eda_shark_td.Rmd before running this doc
 
 We used glmmTMB to explore some of the main effects, both fixed and random, and their interactions.
 
 Now will remodel in a Bayesian framework.
 
-Model 5 and 5a were the most appropriate for our purposes (TBC) but take ages to run in brms, so will trial with simple model first (to get priors sorted etc)
+Model 5 and but take a while to run in brms, so will trial with simple model first (to get priors sorted etc)
+
+# Some model families won't work with NAs in dataframe
+```{r}
+shark_individual_daily_td <- shark_individual_daily_td %>% 
+  filter(!is.na(daily_max_depth))
+
+shark_individual_daily_td %$% 
+  summary(daily_max_depth)
+```
+
 
 
 # Model fitting
 
 Model formula will be:
 ```{r}
-td.form <- bf(daily_max_depth ~ SST + (SST|transmitter_id), family = "gaussian")
+td.form <- bf(daily_max_depth ~ SST * Season + Sex * TL + (SST|transmitter_id), family = "hurdle_gamma")
 ```
 
 We can see what priors we need to specify for such a model and what the default priors would be if we don't specify
 ```{r}
-get_prior(daily_max_depth ~ SST + (SST|transmitter_id), data = shark_1_td, family = "gaussian")
+get_prior(daily_max_depth ~ SST * Season + Sex * TL + (SST|transmitter_id), data = shark_individual_daily_td, family = "hurdle_gamma")
 ```
 
 
@@ -93,8 +92,8 @@ priors2 <-
 
 ```{r message=FALSE}
 prior_mod <- brm(td.form, 
-                  data = shark_1_td,
-                  prior = priors2,
+                  data = shark_individual_daily_td,
+                  prior = priors,
                   sample_prior = 'only',
                   iter = 5000,
                   warmup = 2500,
@@ -116,8 +115,8 @@ prior_mod %>% conditional_effects() %>%  plot(points = TRUE)
 
 ```{r message=FALSE, warning=FALSE}
 td_mod <- brm(td.form, 
-              data = shark_1_td,
-              prior = priors2,
+              data = shark_individual_daily_td,
+              prior = priors,
               sample_prior = 'yes',
               iter = 5000,
               warmup = 2500,

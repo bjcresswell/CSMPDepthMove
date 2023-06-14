@@ -1,6 +1,5 @@
 ---
-title: "Initial data exploration: Regulation of temperature via depth in response
-  to seasonal changes in SST in *Carcharhinus amblyrhynchos*"
+title: "Regulation of temperature via depth in response to seasonal changes in SST in *Carcharhinus amblyrhynchos*"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
@@ -30,8 +29,7 @@ knitr::opts_chunk$set(
 	message = FALSE,
 	warning = FALSE
 )
-source("packages.R")
-rm(list=ls()) # Clear out environment if necessary
+#rm(list=ls()) # Clear out environment if necessary
 ```
 
 ### Introduction
@@ -39,24 +37,20 @@ rm(list=ls()) # Clear out environment if necessary
 This document provides an initial overview into the temperature and pressure (i.e. depth) data retrieved from the 15 x *Carcharhinus amblyrhychos* tagged with V16 T/P transmitters at Osprey reef. The data span a period of 1 year, including one whole Austral 'summer' and 'winter' period and all 15 individuals were detected throughout the period (no missing animals!). There are some noticeable patterns in annual SSTs and also in the maximum, mean and minimum temperatures and depths that these sharks experienced on a daily basis, which will hopefully become apparent in the rest of this document...
 
 
-### Long-term annual SST patterns in the northern Coral Sea
+### Long-term annual SST patterns at Osprey Reef
 
 I used SST data from NOAA's geo-polar satellite-mounted radiometers (as per Coral Reef Watch's virtual stations) for the pixel covering Osprey reef. The reef experiences annual fluctuations of about 4-5°C with peak summer mean temperatures occurring around Jan-Feb and winter minimum means around August.Temperatures for the year in the present study (Oct 2021 - Oct 2022) were on average 
 
 ```{r CRW-LT, echo=FALSE}
 getwd()
-source("00_wrangle/wrangling_SSTdata.R")
+source("code/packages.R")
+source(knitr::purl("code/00_wrangle/wrangling_SSTdata.Rmd", quiet = TRUE))
 ```
 
 ### SST variation during study period
 To obtain SST values for the study period I used data from the same platform as above. Temperatures were generally higher throughout the year than the long term average monthly means, with monthly average differences of c.1.5°C (±0.5 SD)
 ```{r}
-SSTvsClimatology
-anomaly_plot
-anomaly %>% 
-  select(!Month) %>% 
-  rename(AMM = SST)
-avg_anomaly
+SSTvAMMplot
 ```
 
 
@@ -69,7 +63,6 @@ Any organism living in surface waters will consequently experience these tempera
 ### Summer depth-temperature profile
 
 ```{r B-ROV-td, echo=FALSE, fig.width = 10}
-getwd()
 source("00_wrangle/wrangling_ROVdata.R")
 BLUEROVplot + ROV_GAMplot
 ```
@@ -88,9 +81,8 @@ For winter temperature profiles, I used CTD data from a single drop by RV Falkor
 ### Summer vs winter depth-temperature profiles
 
 ```{r Osprey-CTD, echo=FALSE, fig.width = 10}
-#setwd('../code')
 getwd()
-source("00_wrangle/wranglingCTD.R")
+source("code/00_wrangle/wrangling_CTDdata.R")
 ```
 
 
@@ -110,7 +102,7 @@ osp_ctd2 <-
 osprey_ctd %>% 
   filter(depth <101) %>% 
   ggplot() +
-  geom_smooth(aes(x = temperature, y = -depth), colour = "blue") +
+  geom_smooth(aes(x = temperature, y = -depth), colour = "blue", method = "loess") +
   geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red", method = "loess") +
   scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
   theme_minimal() +
@@ -130,7 +122,7 @@ Temperature is well known to have an effect on shark movement and ecology in gen
 
 
 ```{r shark-TDdata, message=FALSE, warning=FALSE, include=FALSE, echo=FALSE}
-source(knitr::purl("../code/eda_shark_td.Rmd", quiet=TRUE))
+source(knitr::purl("code/01_eda/eda_shark_td.Rmd", quiet=TRUE))
 ```
 
 ```{r sharkmaxtemp-v-SST, echo=FALSE, message=FALSE, warning=FALSE}

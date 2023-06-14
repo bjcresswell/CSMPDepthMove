@@ -1,5 +1,5 @@
 ---
-title: "Modelling - shark temperature and depth - final glmms"
+title: "Modelling - shark temperature and depth - final models"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -8,8 +8,8 @@ output:
     collapse: no
     df_print: paged
     fig_caption: yes
-    fig_height: 4
-    fig_width: 4
+    fig_height: 6
+    fig_width: 10
     highlight: textmate
     theme: spacelab
     toc: yes
@@ -21,21 +21,11 @@ editor_options:
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-source("packages.R")
+source("code/packages.R")
 #rm(list=ls()) # Clear out environment if necessary
 ```
 
 
-
-```{r echo=FALSE, message=FALSE}
-source(knitr::purl("../code/eda_shark_depth.Rmd", quiet=TRUE))
-source(knitr::purl("../code/eda_shark_temp.Rmd", quiet=TRUE))
-```
-
-## Need to bring in the individual T/P dataframe:
-```{r}
-source("individ_daily_td.R")
-```
 
 
 # Fit models

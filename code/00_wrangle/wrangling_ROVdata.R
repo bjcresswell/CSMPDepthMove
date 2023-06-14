@@ -1,11 +1,10 @@
 ## ----include=FALSE------------------------------------------------------------
-knitr::opts_chunk$set(echo = TRUE)
-source("packages.R")
+#source("packages.R")
 #rm(list=ls()) # Clear out environment if necessary```
 
 
 ## ----load-dep2023i, message=FALSE, warning=FALSE------------------------------
-NHorn2023_D1 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
+NHorn2023_D1 <- read_csv('data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2) %>% 
   filter(Time > parse_hms("08:39:00")) %>%  # Beginning of the first 90m+ transect
@@ -13,7 +12,7 @@ NHorn2023_D1 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>%
 
 
 ## ----load-dep2023ii, message=FALSE, warning=FALSE-----------------------------
-NHorn2023_D2 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
+NHorn2023_D2 <- read_csv('data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2) %>% 
   filter(Time > parse_hms("09:11:30")) %>%  # ROV redeployed and sent back down to ~50m
@@ -21,7 +20,7 @@ NHorn2023_D2 <- read_csv('../data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>%
 
 
 ## ----load-dep2021i, message=FALSE, warning=FALSE------------------------------
-OspEnt2021 <- read_csv('../data/ROV/2021-02-23 11-32-50 vehicle1.csv') %>% 
+OspEnt2021 <- read_csv('data/ROV/2021-02-23 11-32-50 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
   filter(Time > parse_hms("12:02:30")) %>%  # Beginning of the first 95m+ transect
@@ -29,7 +28,7 @@ OspEnt2021 <- read_csv('../data/ROV/2021-02-23 11-32-50 vehicle1.csv') %>%
 
 
 ## ----load-dep2021ii, message=FALSE, warning=FALSE-----------------------------
-NHorn2021_D1 <- read_csv('../data/ROV/2021-02-24 07-43-14 vehicle1.csv') %>% 
+NHorn2021_D1 <- read_csv('data/ROV/2021-02-24 07-43-14 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
   filter(Time > parse_hms("09:08:30"))  %>%  # Beginning of the first ~50m transect
@@ -37,7 +36,7 @@ NHorn2021_D1 <- read_csv('../data/ROV/2021-02-24 07-43-14 vehicle1.csv') %>%
 
 
 ## ----load-dep2021iii, message=FALSE, warning=FALSE----------------------------
-NHorn2021_D2 <- read_csv('../data/ROV/2021-02-24 10-59-22 vehicle1.csv') %>% 
+NHorn2021_D2 <- read_csv('data/ROV/2021-02-24 10-59-22 vehicle1.csv') %>% 
   mutate(Time = as_hms(clock.currentTime)) %>% 
   select(Time, altitudeRelative, temperature.temperature1, temperature.temperature2)  %>% 
   filter(Time > parse_hms("11:28:00"))  %>%  # Beginning of the first ~50m transect
@@ -78,7 +77,7 @@ ROV_temp_comb <-
   full_join(OspEnt2021) %>% 
   full_join(NHorn2023_D1) %>% 
   full_join(NHorn2023_D2) %>% 
-  mutate(depth = altitudeRelative,
+  mutate(depth = -altitudeRelative,
          temp = temperature.temperature2,
          .keep = "none") %>% 
   arrange(depth)

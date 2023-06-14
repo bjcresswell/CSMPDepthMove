@@ -3,13 +3,20 @@
 ### Wrangling
 library(hms)
 library(readxl)
+library(plotrix)    # for SEM calc 
+library(lubridate)  # dates
 library(magrittr)
+library(tidyverse)
+
+# Plotting
 library(patchwork)
 library(sjPlot)
-library(tidyverse)
+library(ggpubr)
 
 ### Modeling
 library(glmmTMB)
+library(effects)   #for partial effects plots
+library(mgcv)
 library(brms)       #for fitting models in STAN
 library(rstan)
 library(coda)       #for diagnostics

@@ -1,0 +1,228 @@
+---
+title: "Modelling - SST GAM"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("../packages.R")
+library(gratia)
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+```{r}
+load("../../data/RData/SST.Rdata")
+```
+
+```{r}
+shark_individual_daily_td %>% 
+  ggplot() +
+  geom_histogram(aes(x = SST))
+```
+Got a few peaks but can probably model as a normal distribution
+
+
+```{r}
+shark_individual_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "black") +
+  geom_smooth(aes(x = date, y = SST), colour = "red") 
+
+SST %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "black") +
+  geom_smooth(aes(x = date, y = SST), colour = "red", method = "gam",  formula = y ~ s(x, bs = 'cs'), level = 0.95) 
+```
+
+
+# Model fitting
+
+
+```{r}
+SST <- SST %>% 
+  mutate(yday = yday(date),
+         year = year(date)) 
+
+SST2021 <- SST %>% 
+  filter(as_date(date) <= as_date("2021-12-31")) %>% 
+  mutate(study_day = yday(date)-300)
+
+SST2022 <- SST %>% 
+  filter(as_date(date) > as_date("2021-12-31")) %>% 
+  mutate(study_day = yday(date)+65)
+
+SSTgamdata <- 
+  bind_rows(SST2021, SST2022)
+
+```
+
+
+## In MGCV
+```{r}
+SST.gam1a <- gam(SST ~ s(study_day, bs = "cs"),
+                data = SSTgamdata,
+                )
+```
+
+
+
+## Checks and validation
+```{r}
+SST.gam1a %>% k.check()
+SST.gam1a %>% simulateResiduals(plot = TRUE) %>% 
+  testDispersion()
+SST.gam1a %>% gam.check()
+```
+
+# Quick initial look at fit
+```{r}
+SST.gam1a %>% draw(residuals = TRUE)
+```
+
+
+
+```{r}
+SST.gam %>% dplyr::select(summary.df)
+```
+
+```{r}
+SST.gam <- SSTgamdata %>% nest() %>% 
+  mutate(gam = map(data, ~gam(SST ~ s(study_day, k = 10, bs = 'cs'),
+                              data = .,
+                              method = 'REML'))) 
+
+SST.gam2 <- SSTgamdata %>% 
+  gam(SST ~ s(study_day, k = 10, bs = 'cs'),
+                              data = .,
+                              method = 'REML') 
+
+SST.gam3 <- SST.gam %>%
+  select(gam) %>% 
+  unnest()
+  
+
+SST.gam$gam[[1]]
+```
+
+```{r}
+SST.gam %>% 
+  dplyr::select(gam) %>% 
+  simulateResiduals(plot = TRUE)
+
+
+```
+
+
+```{r}
+SST.gam.details <- SST.gam %>% group_by(data) %>% 
+  mutate(grid = map(data, ~with(., list(study_day = modelr::seq_range(study_day, by = 1)))),
+         emmeans = map2(.x = gam, .y = grid, ~emmeans(.x, ~study_day, at = .y, type = "response") %>% 
+                          as.data.frame())) %>% 
+  mutate(newdata = map(gam, ~data.frame(study_day = .$model$study_day)),
+         presid = map2(.x = gam, .y = newdata, 
+                       ~data.frame(Pred = predict(.x, newdata = .y, type = "response"),
+                                   Resid = resid(.x, type = "response")))) %>% 
+  mutate(summary = map(gam, ~summary(.)),
+         summary.df = map(summary, ~data.frame(dev.expl = .$dev.expl)))
+  
+
+SST.gam.details %>% dplyr::select(summary.df) %>% unnest(summary.df)
+```
+
+
+
+
+
+
+
+```{r}
+SST.gam.emms <- SST.gam.details %>% 
+  dplyr::select(emmeans) %>% 
+  unnest(emmeans)
+
+```
+
+
+# Convert back to dates
+```{r}
+
+GAM2021 <-
+SST.gam.emms %>% 
+  filter(study_day < 66) %>% 
+  mutate(yday = study_day + 300) %>% 
+  mutate(date = as.Date(yday, origin = "2020-12-31"))
+
+
+GAM2022 <-
+SST.gam.emms %>% 
+  filter(study_day > 65) %>% 
+  mutate(yday = study_day - 65) %>% 
+  mutate(date = as.Date(yday, origin = "2021-12-31"))
+
+SST.GAM.plot.data <- 
+  bind_rows(GAM2021, GAM2022)
+
+```
+
+
+```{r}
+SSTextremes <- 
+  SST.GAM.plot.data %>% 
+  slice_max(emmean) %>% 
+  bind_rows(
+  SST.GAM.plot.data %>% 
+  slice_min(emmean))
+SSTextremes
+
+
+SST_cold <- 
+  SST.GAM.plot.data %>% 
+  slice_min(emmean)
+
+SST_hot  <- 
+  SST.GAM.plot.data %>% 
+  slice_max(emmean)
+  
+```
+
+
+
+```{r}
+SST.GAM.plot.data %>% 
+  ggplot() +
+  geom_ribbon(aes(x = date, ymin = lower.CL, ymax = upper.CL), alpha = .5) +
+  geom_line(aes(x = date, y = emmean)) + 
+  #geom_point(data = em.gam.year %>% unnest(c(newdata, presid)) %>% 
+   #            mutate(Presid = exp(Pred) + Resid), 
+    #         aes(y = Presid, x = adj.yday), alpha = .5) +
+  geom_line(data = SSTgamdata, aes(x = date, y = SST), col = "black", alpha =.5, linewidth = 0.5) +
+  geom_point(data = SSTgamdata, aes(x = date, y = SST), col = "black", alpha =.5, size = 1) +
+  geom_point(data = SST_hot, aes(x = date, y = emmean), col = "black", fill = "red", alpha = 1, size = 5, pch = 24) +
+  geom_point(data = SST_cold, aes(x = date, y = emmean), col = "black", fill = "blue", alpha = 1, size = 5, pch = 25) +
+  xlab("Date") +
+  ylab("Estimated marginal mean SST (°C)") +
+  theme_minimal()
+#END
+
+
+```
+
+
+

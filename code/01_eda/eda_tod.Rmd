@@ -1,0 +1,158 @@
+---
+title: "Exploratory data analysis - shark temperature and depth"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 3
+    fig_width: 9
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include=FALSE}
+getwd()
+source("code/packages.R")
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+# Load shark T/P data
+```{r}
+getwd()
+load(file = "data/Rdata/shark_tp_data.Rdata")
+```
+
+Re-level the hourly variable so that morning/day is first and evening/night afterwards
+```{r}
+#time_levels <- c('7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '0', '1', '2', '3', '4', '5', '6')
+
+##shark_tp_data <- shark_tp_data %>% mutate(hour = factor(hour, levels = time_levels))
+```
+
+
+## T/D by hour
+```{r}
+hourly_shark_data <- 
+shark_tp_data %>% 
+  group_by(Season, hour) %>% 
+  filter(!is.na(Depth)) %>% 
+   summarise(max_depth = max(Depth),
+            mean_depth = mean(Depth),
+            median_depth = median(Depth),
+            min_depth = min(Depth),
+            sd_depth = mad(Depth),
+            se_depth = std.error(Depth)) %>% 
+  left_join(shark_tp_data %>% 
+              group_by(Season, hour) %>% 
+  filter(!is.na(Temp)) %>% 
+  summarise(max_temp = max(Temp),
+            mean_temp = mean(Temp),
+            median_temp = median(Temp),
+            min_temp = min(Temp),
+            sd_temp = sd(Temp),
+            se_temp = std.error(Temp)))
+```
+
+# Mean depth use by hour ~ season
+```{r fig.height=3, fig.width=9}
+hourly_shark_data %>% 
+  ggplot() +
+  geom_errorbar(aes(ymin = mean_depth-sd_depth, ymax = mean_depth+sd_depth, x = hour), width = 0.1, colour = "grey40", linewidth = 0.2) +
+  geom_line(aes(x = hour, y = mean_depth), colour = "grey20") +
+  geom_point(aes(x = hour, y = mean_depth), pch = 21, fill = "grey60", colour = "black") +
+  #geom_line(aes(x = hour, y = median_depth), colour = "grey20") +
+  #geom_point(aes(x = hour, y = median_depth), pch = 21, fill = "green4", colour = "black") +
+  scale_y_reverse() +
+  geom_vline(xintercept = c(6, 18)) +
+  theme_bw() +
+  facet_wrap(~ Season, ncol = 4)
+```
+
+
+# Max depth use by hour ~ season
+```{r fig.height=3, fig.width=9}
+hourly_shark_data %>% 
+  ggplot() +
+  #geom_smooth(aes(x = hour, y = max_depth), method = "gam", formula = y~s(x, bs = "cs", k = 22), colour = "blue") +
+  geom_line(aes(x = hour, y = max_depth), colour = "grey20") +
+  geom_point(aes(x = hour, y = max_depth), pch = 21, fill = "grey", colour = "black") +
+  scale_y_reverse() +
+  geom_vline(xintercept = c(6, 18)) +
+  theme_bw() +
+  facet_wrap(~ Season, ncol = 4)
+```
+
+
+
+
+# Variation in depth use by hour ~ season
+```{r fig.height=3, fig.width=9}
+hourly_shark_data %>% 
+  ggplot() +
+  geom_line(aes(x = hour, y = sd_depth), colour = "black") +
+  geom_vline(xintercept = c(6, 18)) +
+  theme_bw() +
+  facet_wrap(~ Season, ncol = 4)
+```
+
+
+
+####### 
+
+
+
+
+
+## Diurnal T/D
+```{r}
+diurnal_shark_data <- 
+  shark_tp_data %>%
+  group_by(Season, tod) %>% 
+  filter(!is.na(Depth)) %>% 
+  summarise(max_depth = max(Depth),
+            mean_depth = mean(Depth),
+            median_depth = median(Depth),
+            min_depth = min(Depth),
+            sd_depth = sd(Depth),
+            se_depth = std.error(Depth)) %>% 
+  left_join(shark_tp_data %>% 
+              group_by(Season, tod) %>% 
+              filter(!is.na(Temp)) %>% 
+              summarise(max_temp = max(Temp),
+                        mean_temp = mean(Temp),
+                        median_temp = median(Temp),
+                        min_temp = min(Temp),
+                        sd_temp = sd(Temp),
+                        se_temp = std.error(Temp)))
+```
+
+
+
+
+# Mean depth use by TOD ~ season
+```{r fig.height=3, fig.width=9}
+diurnal_shark_data %>% 
+  ggplot() +
+  #geom_line(aes(x = tod, y = mean_depth), colour = "grey20") +
+  geom_point(aes(x = tod, y = mean_depth), pch = 21, fill = "grey", colour = "black") +
+  geom_errorbar(aes(ymin = mean_depth-sd_depth, ymax = mean_depth+sd_depth, x = tod), width = 0.1, colour = "black") +
+  scale_y_reverse() +
+  geom_vline(xintercept = c(6, 18)) +
+  theme_bw() +
+  facet_wrap(~ Season, ncol = 4)
+```

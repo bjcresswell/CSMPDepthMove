@@ -1,5 +1,5 @@
 ---
-title: "Calibrating sensor data"
+title: "Wrangle and calibrate Osprey sensor data"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -21,14 +21,15 @@ editor_options:
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-source('../packages.R')
+source('code/packages.R')
 #rm(list=ls()) # Clear out environment if necessary
+getwd()
 ```
 
 # Load data
 
 ```{r}
-load("../../../CSMPWrangling/data/RData/alldata.RData")
+load("../CSMPWrangling/data/RData/alldata.RData")
 ```
 
 ## Filter out Osprey sensor data
@@ -51,7 +52,7 @@ Should have 25 tagged animals - compare database to project tag list.
 
 ### Load project tag list
 ```{r}
-load("../../../CSMPWrangling/data/RData/project_tag_list.RData")
+load("../CSMPWrangling/data/RData/project_tag_list.RData")
 ```
 
 ```{r}
@@ -95,7 +96,7 @@ group_by(station_name_long) %>%
 
 ## Quick visual checks
 ```{r}
-osp_receiver_times <- 
+#osp_receiver_times <- 
 osp_sens_data %>% 
   ggplot(mapping = aes(x = detection_timestamp, y = station_name_long)) + 
   xlab("Date") + 
@@ -103,12 +104,12 @@ osp_sens_data %>%
   geom_point() +
   geom_vline(xintercept = as.numeric(osp_sens_data$detection_timestamp[c(5, 709325)])) +
   theme_light()
-osp_receiver_times
-ggsave(plot = osp_receiver_times, filename = "../output/osp_receiver_times.png", device = 'png', width = 180, height = 100, units = "mm")
+#osp_receiver_times
+#ggsave(plot = osp_receiver_times, filename = "../output/osp_receiver_times.png", device = 'png', width = 180, height = 100, units = "mm")
 
 ```
 
-May need to cut the data off at the end of Oct 2022 as we only have 3 receivers with any data past that point (and critically North Horn, which has the most data, ends there also)
+Looks like we'll need to cut the data off at the end of Oct 2022 (black vertical line) as we only have 3 receivers with any data past that point
 
 ## Assign just one transmitter id to each sensor tag
 
@@ -151,7 +152,8 @@ shark_press_data <-
   osp_sens_data %>%
   filter(Org_type == "Elasmobranch") %>% 
   filter(Type =="press") %>% 
-  mutate(Depth = `Sensor.Value` * Slope + Intercept)
+  mutate(Depth = `Sensor.Value` * Slope + Intercept) %>% 
+  mutate(Depth = if_else(Depth <0, 0, Depth)) # Have a few negative values (up to c. -3) - clearly cannot be out of the water so will reset to 0
 ```
 
 # Combine together so that temp and depth in the same dataframes
@@ -167,6 +169,27 @@ shark_tp_data <-
   filter(detection_timestamp < as.Date("2022-11-01 00:00:01")) %>% 
   arrange(detection_timestamp) %>% 
   droplevels()
+```
+
+## Add in other variables of interest for use in models later
+- Hour of the day
+- Time of day (day vs night)
+- Season
+```{r}
+shark_tp_data <- shark_tp_data %>% 
+  mutate(date = date(detection_timestamp)) %>% 
+  mutate(hour = hour(detection_timestamp)) %>% 
+  mutate(tod = case_when(hour %in% (7:16) ~ "Day",
+                         hour %in% (5:6) ~ "Dawn",
+                         hour %in% (17:18) ~ "Dusk",
+                         TRUE ~ "Night")) %>% 
+  mutate(Season = factor(case_when(
+    date >= date("2022-01-01") & date<= date("2022-03-31") ~ "Summer",
+    date >= date("2022-07-01") & date<= date("2022-09-30") ~ "Winter",
+    date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
+    date < date("2022-12-31")  ~ "Spring",
+    date > date("2022-09-30") ~ "Spring"))) %>% 
+  filter(date > date("2021-10-27"))
 ```
 
 
@@ -187,7 +210,7 @@ shark_tp_data %$% summary(station_name_long) # No. of individuals detected - all
 ```
 # Save
 ```{r}
-save(shark_tp_data, file = "../../data/Rdata/shark_tp_data.Rdata")
+save(shark_tp_data, file = "data/Rdata/shark_tp_data.Rdata")
 ```
 
 
@@ -216,7 +239,9 @@ teleost_press_data <-
   osp_sens_data %>%
   filter(Org_type == "Teleost") %>% 
   filter(Type =="press") %>% 
-  mutate(Depth = `Sensor.Value` * Slope + Intercept)
+  mutate(Depth = `Sensor.Value` * Slope + Intercept) %>% 
+  mutate(Depth = if_else(Depth <0, 0, Depth)) # Have a few negative values (up to c. -3) - clearly cannot be out of the water so will reset to 0
+
 ```
 
 # Combine together so that temp and depth in the same dataframes
@@ -230,6 +255,27 @@ teleost_tp_data <-
   droplevels()
 ```
 
+## Add in other variables of interest for use in models later
+- Hour of the day
+- Time of day (day vs night)
+- Season
+```{r}
+teleost_tp_data <- teleost_tp_data %>% 
+  mutate(date = date(detection_timestamp)) %>% 
+  mutate(hour = hour(detection_timestamp)) %>% 
+  mutate(tod = case_when(hour %in% (7:16) ~ "Day",
+                         hour %in% (5:6) ~ "Dawn",
+                         hour %in% (17:18) ~ "Dusk",
+                         TRUE ~ "Night")) %>% 
+  mutate(Season = factor(case_when(
+    date >= date("2022-01-01") & date<= date("2022-03-31") ~ "Summer",
+    date >= date("2022-07-01") & date<= date("2022-09-30") ~ "Winter",
+    date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
+    date < date("2022-12-31")  ~ "Spring",
+    date > date("2022-09-30") ~ "Spring"))) %>% 
+  filter(date > date("2021-10-27"))
+```
+
 # Checks
 ```{r}
 teleost_tp_data # No. of observations ~ 41,000
@@ -240,6 +286,11 @@ Only have good #s of detections for a couple of individuals.
 
 # Save
 ```{r}
-save(teleost_tp_data, file = "../../data/Rdata/teleost_tp_data.Rdata")
+save(teleost_tp_data, file = "data/Rdata/teleost_tp_data.Rdata")
+```
+
+
+```{r}
+#END
 ```
 

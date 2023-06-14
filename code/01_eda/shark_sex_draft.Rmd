@@ -1,0 +1,51 @@
+
+
+
+
+
+
+
+
+
+# Load SST data
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=6}
+source(knitr::purl("code/00_wrangle/wrangling_SSTdata.Rmd", quiet = TRUE))
+```
+
+
+
+
+
+
+## Daily depths by sex
+```{r fig.width=16, fig.height=6}
+shark_individual_daily_depths %>%   
+  ggplot() +
+  geom_line(aes(x = date, y = daily_min_depth), colour = "skyblue") +
+  #geom_smooth(aes(x = date, y = daily_min_depth), colour = "blue",  method = "gam", formula = y ~ s(x, bs = 'cs')) + # method = "gam" implements mgcv
+  geom_line(aes(x = date, y = daily_mean_depth), colour = "dodgerblue") +
+  geom_smooth(aes(x = date, y = daily_mean_depth), colour = "dodgerblue",  method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
+  geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
+  #geom_smooth(aes(x = date, y = daily_max_depth), colour = "red") + # Basic smooth, rather than gam
+  theme_minimal() +
+  scale_y_reverse() +
+  #scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  #theme(axis.text.x = element_text(angle = 45)) +
+  theme(axis.text.x = element_blank()) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.ticks.x = element_blank()) +
+  #xlab("Date") +
+  ylab("Depth \n (m below sealevel)") +
+  facet_wrap(facets = "Sex")
+```
+Females much more variable in terms of depth use. Perhaps could be unbalanced sample design?
+
+```{r}
+shark_tp_data %>% 
+  select(transmitter_id, Sex) %>% 
+  distinct() %$%
+  summary(Sex)
+```
+
+Probably - 13 females and 2 males

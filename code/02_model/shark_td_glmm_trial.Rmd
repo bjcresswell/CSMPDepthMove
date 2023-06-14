@@ -1,5 +1,5 @@
 ---
-title: "Modelling - shark temperature and depth - trial model building"
+title: "Shark temperature and depth - model building"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -8,8 +8,8 @@ output:
     collapse: no
     df_print: paged
     fig_caption: yes
-    fig_height: 4
-    fig_width: 4
+    fig_height: 6
+    fig_width: 10
     highlight: textmate
     theme: spacelab
     toc: yes
@@ -19,82 +19,58 @@ editor_options:
 ---
 
 
-```{r include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-source("../packages.R")
-#rm(list=ls()) # Clear out environment if necessary
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	include = FALSE,
+	message = FALSE,
+	warning = FALSE)
 ```
 
 
-## NEED TO RUN eda_shark_td.Rmd before running this doc
+```{r include=FALSE}
+source("code/packages.R")
+rm(list=ls()) # Clear out environment if necessary
+```
 
 
-## To model temp vs depth, will need to do a few preliminary steps:
-
-1. Decide temporal scale - daily, weekly, monthly?
-2. Decide actual response - maximums, means, minimums? What about variability?
-3. Wrangle data according to the above and ensure transmitter_id is kept in as we'll need it as a random effect in any model
-
-
-
-# Last few visual checks
 ```{r}
+# Load data
+load(file = "data/Rdata/shark_individual_daily_tds.Rdata")
+```
+
+
+## Introduction
+
+From basic data exploration steps, it looks like daily maximum depth is the response variable of most interest as a response to changes in SST over time. This document explores the relationship between maximum daily depth and SSTs and also build generalised mixed effect models (GLMMs) to tease apart the effects of other variables of interest.
+
+### Individual shark (transmitter_id) included as a random effect
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+# Last few visual checks
 shark_individual_daily_td %>% 
   ggplot() +
   geom_line(aes(x = date, y = daily_max_depth)) +
   geom_line(aes(x = date, y = daily_depth_sd), colour = "red") +
-  facet_wrap( ~ transmitter_id)
+  theme_minimal() +
+  scale_x_date(date_breaks = "3 months", date_labels = '%b', ) +
+  xlab("Date") +
+  ylab("Daily max depth (m)") +
+  facet_wrap( ~ transmitter_id, ncol = 5)
 ```
 
+Black line = daily maximum depth, Red line = daily depth SD
+
+
+```{r}
 ## Check distributions so we know how to model
-## Depth
-```{r}
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_histogram(aes(x = daily_max_depth))
-
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_histogram(aes(x = daily_mean_depth))
-
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_histogram(aes(x = daily_max_depth))
-
+## Max depth
+shark_individual_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_depth))
+## Mean depth
+shark_individual_daily_td %>% ggplot() + geom_histogram(aes(x = daily_mean_depth))
+## Min depth
+shark_individual_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_depth))
 ```
 
-## Temp distribution
-```{r}
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_histogram(aes(x = daily_max_temp))
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_histogram(aes(x = daily_mean_temp))
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_histogram(aes(x = daily_max_temp))
-```
-
-```{r}
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_histogram(aes(x = TL))
-```
-
-# Final wrangling steps
-To analyse seasonal differences
-```{r}
-shark_individual_daily_td <- shark_individual_daily_td %>% 
-  mutate(Season = factor(case_when(
-    date >= date("2022-01-01") & date<= date("2022-03-31") ~ "Summer",
-    date >= date("2022-07-01") & date<= date("2022-09-30") ~ "Winter",
-    date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
-    date < date("2022-12-31")  ~ "Spring",
-    date > date("2022-09-30") ~ "Spring"))) %>% 
-  filter(date > date("2021-10-27"))
-
-```
 
 
 
@@ -117,7 +93,6 @@ sst_maxd_glmm5a <- glmmTMB(daily_max_depth ~ SST * Sex * TL + (SST|transmitter_i
 
 ## Residual diagnostics
 ```{r}
-#plot_model(sst_maxd_glmm3,  type='diag')[-2] %>% plot_grid()
 #sst_maxd_glmm1 %>% simulateResiduals(plot=TRUE)
 #sst_maxd_glmm1a %>% simulateResiduals(plot=TRUE)
 #sst_maxd_glmm2 %>% simulateResiduals(plot=TRUE)
@@ -128,8 +103,7 @@ sst_maxd_glmm5 %>% simulateResiduals(plot=TRUE)
 sst_maxd_glmm5a %>% simulateResiduals(plot=TRUE)
 ```
 ## Check AIC scores
-Using second-order AICc as our sample size is low relative to model parameter number
-15/5
+Using second-order AICc as our sample size is low relative to model parameter number (15:5)
 ```{r}
 AICc(#sst_maxd_glmm1, 
      #sst_maxd_glmm1a, 
@@ -154,24 +128,35 @@ sst_maxd_glmm5a %>% performance::r2_nakagawa()
 ```
 Model 5 best fit with fixed factors explaining 38% of the variance (marginal/pseudo R2) and lowest AIC. Also has all the required terms we are interested in. Will move forward with this model, but first note the random effect (individual - slope and intercept) is also explaining a chunk of the variance - indicates substantial individual level differences. I do have some nervousness about co-modelling SST and Season... Model 5a has Season taken out and SST interacting with the other terms but doesn't have as low an AICc
 
+## Rerun Model 5 with REML = TRUE
+```{r}
+sst_maxd_final <- update(object = sst_maxd_glmm5, REML = TRUE)
+```
+
+```{r}
+sst_maxd_glmm5 %>% performance::r2_nakagawa()
+sst_maxd_final %>% performance::r2_nakagawa()
+
+```
+
 ## Summary table
 ```{r}
-summary(sst_maxd_glmm5)
+summary(sst_maxd_final)
 ```
 
 # Summary of random effects
 ```{r ranfeffects}
-sst_maxd_glmm5 %>% ranef()
+sst_maxd_final %>% ranef()
 ```
 
 # Quick overview of effects and interactions:
 
 ## Simple fixed effects - Model 5
-```{r}
-sst_maxd_glmm5 %>% ggemmeans(~ Season) %>% plot
-sst_maxd_glmm5 %>% ggemmeans(~ SST) %>% plot
-sst_maxd_glmm5 %>% ggemmeans(~ Sex) %>% plot
-sst_maxd_glmm5 %>% ggemmeans(~ TL) %>% plot
+```{r echo=FALSE}
+sst_maxd_final %>% ggemmeans(~ Season) %>% plot
+sst_maxd_final %>% ggemmeans(~ SST) %>% plot
+sst_maxd_final %>% ggemmeans(~ Sex) %>% plot
+sst_maxd_final %>% ggemmeans(~ TL) %>% plot
 ```
 Looks like separately, there are some significant effects here:
 - Effect of season: definitely seasonal differences - esp between winter and summer
@@ -179,66 +164,55 @@ Looks like separately, there are some significant effects here:
 - Effect of sex: looks like some differences here but non-significant. Bayesian approach would probably allow quantification of this?
 - Effect of size: again looks like there might be a pattern (smaller individuals going deeper), but this might be non-significant. Would need to do some planned contrasts to check.
 
-## Simple fixed effects - Model 5a
-```{r}
-sst_maxd_glmm5a %>% ggemmeans(~ SST) %>% plot
-sst_maxd_glmm5 %>% ggemmeans(~ Sex * SST * TL) %>% plot
-```
-
 
 ## Interaction terms:
 
 ### Season * SST
-```{r}
-sst_maxd_glmm5 %>% ggemmeans(~ Season*SST) %>% plot
-sst_maxd_glmm5 %>% ggemmeans(~ SST*Season) %>% plot
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+sst_maxd_final %>% ggemmeans(~ Season*SST) %>% plot
+sst_maxd_final %>% ggemmeans(~ SST*Season) %>% plot
 ```
 Quick interpretation - on average deeper in the summer, shallower in the winter and more variable in spring and autumn.
 
 ## Sex and size
-```{r}
-sst_maxd_glmm5 %>% ggemmeans(~ Sex*TL) %>% plot
-sst_maxd_glmm5 %>% ggemmeans(~ TL*Sex) %>% plot
-sst_maxd_glmm5a %>% ggemmeans(~ Sex*TL) %>% plot
-sst_maxd_glmm5a %>% ggemmeans(~ TL*Sex) %>% plot
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+sst_maxd_final %>% ggemmeans(~ Sex*TL) %>% plot
+sst_maxd_final %>% ggemmeans(~ TL*Sex) %>% plot
 ```
 
 
 ### SST and sex 
 We know (from the above) that males may remain a little deeper than females, but do they respond differently to SSTs or in the same way?
-```{r}
-sst_maxd_glmm5 %>% ggemmeans(~ SST * Sex) %>% plot
-sst_maxd_glmm5 %>% ggemmeans(~ Sex * SST) %>% plot
-sst_maxd_glmm5a %>% ggemmeans(~ SST) %>% plot
-sst_maxd_glmm5a %>% ggemmeans(~ Sex) %>% plot
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+sst_maxd_final %>% ggemmeans(~ SST * Sex) %>% plot
+sst_maxd_final %>% ggemmeans(~ Sex * SST) %>% plot
 ```
 
 Looks like higher SSTs drive both males and females deeper.
 
 ## Quantify some of these patterns in emmeans
 
-```{r}
-sst_maxd_glmm5 %>% ggemmeans(~ Season) %>% plot
-sst_maxd_glmm5 %>% emmeans(pairwise ~ Season)
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+sst_maxd_final %>% ggemmeans(~ Season*SST) %>% plot
+sst_maxd_final %>% emmeans( ~ SST*Season) %>% regrid() %>% pairs() %>% confint()
+
+sst_maxd_final %>% ggemmeans(~ Sex) %>% plot
+sst_maxd_final %>% emmeans( ~ Sex) %>% regrid() %>% pairs() %>% confint()
 ```
 At the mean SST there are significant differences in all season pairwise contrasts except Autumn - Spring
 However, note the warning about interactions:
 
 
-```{r}
-sst_maxd_glmm5a %>% ggemmeans(~ SST * Sex) %>% plot
-sst_maxd_glmm5a %>% ggemmeans(~ SST * TL) %>% plot
-
-sst_maxd_glmm5a %>% emmeans(~ SST)
-sst_maxd_glmm5a %>% emtrends("Sex", var = "SST")# %>% contrast()
-```
-
-```{r}
-sst_maxd_glmm5 %>% ggemmeans(~ SST * Season) %>% plot
-sst_maxd_glmm5 %>% emtrends("Season", var = "SST") %>% contrast()
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+sst_maxd_final %>% ggemmeans(~ SST * Sex) %>% plot
+sst_maxd_final %>% ggemmeans(~ SST * TL) %>% plot
 ```
 
 
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+sst_maxd_final %>% emmeans(~ SST)
+sst_maxd_final %>% emtrends("Sex", var = "SST")# %>% contrast()
+```
 
 
 

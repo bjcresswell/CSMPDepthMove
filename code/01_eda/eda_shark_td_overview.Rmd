@@ -1,0 +1,112 @@
+---
+title: "Exploratory data analysis - shark temp and depth overview"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 20
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+output_dir: "docs"
+documentclass: article
+fontsize: 12pt
+mainfont: Arial
+mathfont: LiberationMono
+monofont: DejaVu Sans Mono
+classoption: a4paper
+---
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+source("code/packages.R")
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+# Load shark T/P data
+```{r}
+load(file = "data/Rdata/shark_tp_data.Rdata")
+```
+
+### Overview depth and temp
+```{r}
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse()
+
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%   # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) 
+```
+
+
+
+# Temp overview - by individual
+```{r fig.width=16, fig.height=6}
+shark_tp_data %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  facet_wrap(~ transmitter_id)
+```
+
+# Temp overview - by receiver station
+```{r fig.width=16, fig.height=6}
+shark_tp_data %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  facet_wrap(~ station_name_long)
+
+shark_tp_data %>% 
+  #filter(station_name %in% c("CS-O1", "CS-O2")) %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Temp)) +
+  facet_wrap(~ station_name)
+```
+
+
+## Depth overview - by individual
+```{r fig.width=16, fig.height=6}
+shark_tp_data %>% 
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse() +
+  facet_wrap(~ transmitter_id)
+```
+
+
+## Depth overview - by receiver station
+```{r fig.width=16, fig.height=6}
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse() +
+  facet_wrap(~ station_name_long)
+
+shark_tp_data %>% 
+  #filter(transmitter_id == "A69-9004-14037") %>%  # If you want to look at one individual
+  ggplot() +
+  geom_point(aes(x = detection_timestamp, y = Depth)) +
+  scale_y_reverse() +
+  facet_wrap(~ station_name)
+```
+
+
+
+
+
+

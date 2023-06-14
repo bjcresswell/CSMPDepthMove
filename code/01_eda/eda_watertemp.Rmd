@@ -1,0 +1,92 @@
+---
+title: "Exploratory data analysis - water temp attenuation"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+getwd()
+```
+
+
+```{r include=FALSE}
+source("code/packages.R")
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+# Load data from ROV and CTD deployments
+```{r message=FALSE, warning=FALSE}
+source("code/00_wrangle/wrangling_CTDdata.R")
+source("code/00_wrangle/wrangling_ROVdata.R")
+```
+
+
+# Need to thin the data out a bit for plotting:
+## CTD
+
+```{r}
+osprey_ctd_thin <- osprey_ctd %>% 
+  filter(depth <101) %>% 
+  mutate(depth = round(depth, digits = 0)) %>% 
+  group_by(depth) %>% 
+  summarize(temp = mean(temperature)) %>% 
+  filter(depth %% 2 == 1)
+```
+
+
+## ROV
+```{r}
+osprey_rov_thin <- ROV_temp_comb %>% 
+  mutate(depth = round(depth, digits = 0)) %>% 
+  group_by(depth) %>% 
+  summarize(temp = mean(temp))
+```
+
+
+# Plot
+```{r}
+osp_temp_atten <- 
+  ggplot() +
+  geom_point(aes(x = temp, y = depth), data = osprey_ctd_thin, bg = "skyblue", 
+             alpha = 0.4, colour = "black", stroke = 0.3, pch = 21, size = 2, position = "jitter") +
+  geom_point(aes(x = temp, y = depth), data = osprey_rov_thin, bg = "tomato", 
+             alpha = 0.4, colour = "black", stroke = 0.3, pch = 21, size = 2) +
+  geom_smooth(aes(x = temperature, y = depth), data = osprey_ctd, colour = "dodgerblue", method = "loess", formula = 'y ~ poly(x)') +
+  geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red", method = "loess", formula = 'y ~ poly(x)') +
+  scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
+  scale_y_reverse() +
+  theme_bw() +
+ #geom_hline(yintercept = -100, lwd = 0.2, lty = 88) +
+  xlab("Temp (°C)") + 
+  ylab("Depth (m below sea level)")
+
+osp_temp_atten
+```
+
+# Save
+```{r}
+ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten,  width = 161, height = 100, units = "mm", dpi = 300)
+```
+
+
+
+
+
+

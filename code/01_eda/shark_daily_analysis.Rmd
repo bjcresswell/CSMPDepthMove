@@ -1,0 +1,404 @@
+---
+title: "Shark data: daily"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_width: 161/25.4
+    fig_height: 100/25.4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("code/packages.R")
+rm(list=ls()) # Clear out environment if necessary
+```
+
+# Load data 
+## Shark T/P data
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=6}
+load(file = "data/Rdata/shark_tp_data.Rdata")
+# Or, if you also want all the associated files loaded:
+#source(knitr::purl("code/00_wrangle/wrangling_sensordata.Rmd", quiet = TRUE))
+```
+
+## SST
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=6}
+load(file = "data/RData/SST.Rdata")
+# Or, if you also want all the associated files loaded:
+#source(knitr::purl("code/00_wrangle/wrangling_SSTdata.Rmd", quiet = TRUE))
+```
+
+
+# Shark depth - daily summary
+```{r}
+shark_daily_depths <- 
+  shark_tp_data %>% 
+  filter(!is.na(Depth)) %>% 
+  group_by(date) %>% 
+  summarise(daily_max_depth = max(Depth),
+            daily_min_depth = min(Depth),
+            daily_mean_depth = mean(Depth),
+            daily_depth_sd = sd(Depth)) %>% 
+  mutate(daily_min_depth = if_else(daily_min_depth <0, 0, daily_min_depth))
+#shark_daily_depths
+#save(shark_daily_depths, file = "data/Rdata/shark_daily_depths.Rdata")
+```
+
+# Shark temps - daily summary
+```{r}
+shark_daily_temps <- 
+  shark_tp_data %>% 
+  filter(!is.na(Temp)) %>% 
+  group_by(date) %>% 
+  summarise(daily_max_temp = max(Temp),
+            daily_min_temp = min(Temp),
+            daily_mean_temp = mean(Temp),
+            daily_temp_sd = sd(Temp))
+#shark_daily_temps
+#save(shark_daily_temps, file = "data/Rdata/shark_daily_temps.Rdata")
+```
+
+
+# Combine
+```{r}
+shark_daily_td <- 
+  SST %>% 
+  full_join(shark_daily_depths) %>% 
+  full_join(shark_daily_temps) %>% 
+  filter(date > as.Date("2021-10-29"))
+```
+
+## Daily temps (all) vs SST
+```{r}
+shark_daily_temps_plot <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 1) +
+  geom_line(aes(x = date, y = daily_max_temp), colour = "red") +
+  geom_smooth(aes(x = date, y = daily_max_temp), colour = "red") +
+  geom_line(aes(x = date, y = daily_min_temp), colour = "blue") +
+  geom_smooth(aes(x = date, y = daily_min_temp), colour = "blue") +
+  geom_line(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  geom_smooth(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  #annotate("text", x = as.Date("2021-11-01"), y = 30.5, label = "a") +
+  xlab("\nDate") + 
+  ylab("Temp (°C)")
+# View
+shark_daily_temps_plot
+# Save
+ggsave(filename = "output/shark_daily_temps_plot.pdf", plot = shark_daily_temps_plot, width = 161, height = 100, units = "mm", dpi = 300)
+```
+
+# Daily maximumm temperatures track closely with SST
+```{r}
+shark_daily_maxtemp_plot <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.5) +
+  geom_line(aes(x = date, y = daily_max_temp),  colour = "red") +
+  #geom_smooth(aes(x = date, y = daily_max_temp), colour = "red") +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  xlab("\nDate") + 
+  ylab("Temp (°C)")
+
+# View
+shark_daily_maxtemp_plot
+# Save
+ggsave(filename = "output/shark_daily_maxtemp_plot.pdf", plot = shark_daily_maxtemp_plot, width = 161, height = 100, units = "mm", dpi = 300)
+```
+
+
+# However, during summer months sharks were able to negatively thermoregulate mean body temperatures despite high SSTs:
+```{r}
+shark_daily_meantemp_plot <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.5) +
+  geom_line(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  #geom_smooth(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  #geom_vline(xintercept = as.Date("2022-01-19"), colour = "red", lwd = 1) +
+  geom_segment(aes(x = as.Date("2022-01-19"), xend = as.Date("2022-01-19"), y = 29.6, yend = 28.4), colour = "blue",
+                  arrow = arrow(length = unit(0.2, "cm"))) +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  xlab("\nDate") + 
+  ylab("Temp (°C)")
+
+# View
+shark_daily_meantemp_plot
+# Save
+ggsave(filename = "output/shark_daily_meantemp_plot.pdf", plot = shark_daily_meantemp_plot, width = 161, height = 100, units = "mm", dpi = 300)
+```
+
+# The maximum daily downward thermo-regulation was as much as 2°C (on 19 Jan 2022), when SST was around 30°C. Max depth recorded on this date was 122m. (Potentially could investigate what this would come out as at individual level?)
+```{r}
+shark_daily_temp_diff <- 
+  shark_daily_td %>% 
+  mutate(temp_diff = daily_max_temp - daily_mean_temp)
+
+shark_daily_temp_diff %>% 
+  #summarise(max_temp_diff = max(temp_diff))
+  filter(temp_diff == max(temp_diff))
+```
+
+
+## When plotted over the course of the year, it is obvious that these diffs are higher in the summer
+```{r}
+shark_daily_temp_diff %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = temp_diff)) +
+  geom_smooth(aes(x = date, y = temp_diff)) +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  xlab("\nDate") + 
+  ylab("Daily temp diff\n(max vs mean daily temp, °C)")
+```
+
+
+
+## Relationship between SST
+
+
+## Minimum daily temperatures were consistent throughout the year and did not depend on SST (25.3°C ± 0.6°C SD)
+### Calculate avg and SD
+```{r}
+shark_daily_td %>% 
+  summarise(avg_daily_min_temp = mean(daily_min_temp),
+            sd_daily_min_temp = sd(daily_min_temp))
+```
+
+### Plot relationship between SST and daily min temps (there isn't one)
+```{r}
+shark_SST_mintemp_lm_plot <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_point(aes(x = SST, y = daily_min_temp)) +
+  geom_smooth(aes(x = SST, y = daily_min_temp), method = "glm") +
+  theme_minimal() +
+  ylab("Daily min temp (°C)") + 
+  xlab("SST (°C)")
+
+# View  
+shark_SST_mintemp_lm_plot
+
+# Save
+ggsave(filename = "output/shark_SST_mintemp_lm_plot.pdf", plot = shark_SST_mintemp_lm_plot, width = 100, height = 100, units = "mm", dpi = 300)
+```
+
+
+```{r}
+shark_daily_mintemp_plot <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.5) +
+  geom_line(aes(x = date, y = daily_min_temp),  colour = "blue") +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  xlab("\nDate") + 
+  ylab("Temp (°C)")
+
+# View
+shark_daily_mintemp_plot
+# Save
+ggsave(filename = "output/shark_daily_mintemp_plot.pdf", plot = shark_daily_mintemp_plot, width = 161, height = 100, units = "mm", dpi = 300)
+
+```
+
+# Combine figs
+```{r}
+daily_min_temp_sum_fig <- 
+  ggarrange(shark_daily_mintemp_plot, shark_SST_mintemp_lm_plot, ncol = 2, widths = c(1.6,1))
+```
+
+# And save
+```{r}
+ggsave(filename = "output/daily_min_temp_sum_fig.pdf", plot = daily_min_temp_sum_fig, width = 180, height = 60, units = "mm", dpi = 300)
+```
+
+
+
+
+
+## Downward thermoregulation appears to correspond with maximum daily depths attained - depth movements used in order to thermoregulate
+```{r}
+shark_daily_temp_diff %>% 
+  ggplot() +
+  geom_point(aes(x = temp_diff, y = daily_max_depth)) +
+  #geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_smooth(aes(x = temp_diff, y = daily_max_depth), method = "lm") +
+  theme_minimal() +
+  ylab("Daily maximum depth (mbsl)") + 
+  xlab("Daily temperature difference (°C)")
+```
+
+... so let's explore depths a bit more
+
+
+## Plot daily depths
+```{r}
+shark_daily_depth_plot <- 
+shark_daily_td %>%   
+  ggplot() +
+  geom_line(aes(x = date, y = daily_min_depth), colour = "skyblue") +
+  #geom_smooth(aes(x = date, y = daily_min_depth), colour = "blue",  method = "gam", formula = y ~ s(x, bs = 'cs')) + # method = "gam" implements mgcv
+  geom_line(aes(x = date, y = daily_mean_depth), colour = "dodgerblue") +
+  geom_smooth(aes(x = date, y = daily_mean_depth), colour = "dodgerblue",  method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
+  geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
+  #geom_smooth(aes(x = date, y = daily_max_depth), colour = "red") + # Basic smooth, rather than gam
+  theme_minimal() +
+  scale_y_reverse() +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme(axis.text.x = element_text(angle = 45)) +
+  #theme(axis.text.x = element_blank()) +
+  #theme(axis.title.x = element_blank()) +
+  #theme(axis.ticks.x = element_blank()) +
+  xlab("Date") +
+  ylab("Depth \n (m below sealevel)")
+
+shark_daily_depth_plot
+```
+
+
+```{r}
+shark_daily_maxdepth_plot <- 
+shark_daily_td %>%   
+  ggplot() +
+  geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
+  #geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
+  theme_minimal() +
+  scale_y_reverse() +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme(axis.text.x = element_text(angle = 45)) +
+  #theme(axis.text.x = element_blank()) +
+  #theme(axis.title.x = element_blank()) +
+  #theme(axis.ticks.x = element_blank()) +
+  xlab("Date") +
+  ylab("Max daily depth \n (m below sealevel)")
+
+# View
+shark_daily_maxdepth_plot
+# Save
+ggsave(filename = "output/shark_daily_maxdepth_plot.pdf", plot = shark_daily_maxdepth_plot, width = 161, height = 100, units = "mm", dpi = 300)
+```
+
+
+## Max depths vs SST
+```{r}
+SST_plot_plain <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.5) +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_blank()) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.ticks.x = element_blank()) +  
+  xlab("\nDate") + 
+  ylab("SST\n(°C)")
+
+(MaxDep_SST_plot <- SST_plot_plain/shark_daily_maxdepth_plot)
+
+# Save
+ggsave(filename = "output/MaxDep_SST_plot.pdf", plot = MaxDep_SST_plot, width = 161, height = 100, units = "mm", dpi = 300)
+```
+
+## Can use a quick regression to see the relationship
+```{r}
+shark_SST_maxdep_lm_plot <- 
+shark_daily_td %>% 
+  ggplot() +
+  geom_point(aes(x = SST, y = daily_max_depth)) +
+  #geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_smooth(aes(x = SST, y = daily_max_depth), method = "glm") +
+  theme_minimal() +
+  ylab("Daily maximum depth (mbsl)") + 
+  xlab("SST")
+shark_SST_maxdep_lm_plot
+```
+
+It looks like the 5°C difference (summer vs winter) leads to a 50m difference in maximum daily depths, from 60 - 120m
+
+```{r}
+ggsave(filename = "output/shark_SST_maxdep_lm_plot.pdf", plot = shark_SST_maxdep_lm_plot,  width = 100, height = 100, units = "mm", dpi = 300)
+```
+
+# Combine figs
+```{r fig.height=60/25.4, fig.width=180/25.4}
+daily_max_dep_sum_fig <- 
+  ggarrange(MaxDep_SST_plot, shark_SST_maxdep_lm_plot, ncol = 2, widths = c(1.6,1))
+daily_max_dep_sum_fig
+```
+
+# And save
+```{r}
+ggsave(filename = "output/daily_max_dep_sum_fig.pdf", plot = daily_max_dep_sum_fig, width = 180, height = 60, units = "mm", dpi = 300)
+```
+
+
+
+## Final plot - SST / Shark temps / Max depth
+
+```{r}
+temp_plot_plain <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = daily_max_temp), colour = "red") +
+  geom_line(aes(x = date, y = daily_min_temp), colour = "blue") +
+  geom_line(aes(x = date, y = daily_mean_temp), colour = "grey40") +
+  #scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme_minimal() +
+  theme(axis.text.x = element_blank()) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.ticks.x = element_blank()) +    xlab("\nDate") + 
+  ylab("Shark daily temps\n(°C)")
+
+depth_plot_plain <- 
+shark_daily_td %>%   
+  ggplot() +
+  geom_line(aes(x = date, y = daily_min_depth), colour = "skyblue") +
+  geom_line(aes(x = date, y = daily_mean_depth), colour = "dodgerblue") +
+  geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
+  theme_minimal() +
+  scale_y_reverse() +
+  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  theme(axis.text.x = element_text(angle = 45)) +
+  xlab("Date") +
+  ylab("Shark daily depths\n(m below sealevel)")
+
+combined_plot <- 
+    ggarrange(SST_plot_plain, temp_plot_plain, depth_plot_plain, nrow = 3, heights = c(0.5, 1, 1))
+
+# View
+combined_plot
+
+ggsave(filename = "output/combined_plot.pdf", plot = combined_plot, width = 161, height = 280, units = "mm", dpi = 300)
+```
+
+
+
+
+```{r}
+# END #
+```
+
