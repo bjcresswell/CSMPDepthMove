@@ -165,7 +165,7 @@ shark_individual_daily_depths %>%
   theme(axis.ticks.x = element_blank()) +
   #xlab("Date") +
   ylab("Depth \n (m below sealevel)") +
-  facet_wrap(facets = "transmitter_id")
+  facet_wrap(facets = "transmitter_id", ncol = 3)
 
 shark_individual_daily_depth_plot
 ```

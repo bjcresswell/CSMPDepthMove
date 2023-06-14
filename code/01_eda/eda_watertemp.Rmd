@@ -82,7 +82,7 @@ osp_temp_atten
 
 # Save
 ```{r}
-ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten,  width = 161, height = 100, units = "mm", dpi = 300)
+ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten,  width = 120, height = 60, units = "mm", dpi = 300)
 ```
 
 

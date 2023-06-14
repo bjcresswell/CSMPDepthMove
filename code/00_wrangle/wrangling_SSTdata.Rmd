@@ -137,7 +137,7 @@ SSTvAMMplot
 
 # Save
 ```{r}
-#ggsave(filename = "output/SSTvAMMplot.png", SSTvAMMplot, width = 16, height = 9, units = "cm")
+ggsave(filename = "output/SSTvAMMplot.png", SSTvAMMplot, width = 120, height = 60, units = "mm", dpi = 300)
 ```
 
 ## Hottest and coldest SSTs recorded for the study period

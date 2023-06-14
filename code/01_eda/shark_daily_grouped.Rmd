@@ -22,7 +22,7 @@ editor_options:
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 source("code/packages.R")
-rm(list=ls()) # Clear out environment if necessary
+#rm(list=ls()) # Clear out environment if necessary
 ```
 
 # Load data 
@@ -78,7 +78,11 @@ shark_daily_td <-
   full_join(shark_daily_depths) %>% 
   full_join(shark_daily_temps) %>% 
   filter(date > as.Date("2021-10-29"))
+save(shark_daily_td, file = "data/Rdata/shark_daily_td.Rdata")
 ```
+
+
+# 1. OVERVIEW #
 
 ## Daily temps (all) vs SST
 ```{r}
@@ -104,6 +108,8 @@ shark_daily_temps_plot
 ggsave(filename = "output/shark_daily_temps_plot.pdf", plot = shark_daily_temps_plot, width = 161, height = 100, units = "mm", dpi = 300)
 ```
 
+# 2. DAILY MAXIMA #
+
 # Daily maximumm temperatures track closely with SST
 ```{r}
 shark_daily_maxtemp_plot <- 
@@ -112,10 +118,11 @@ shark_daily_maxtemp_plot <-
   geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.5) +
   geom_line(aes(x = date, y = daily_max_temp),  colour = "red") +
   #geom_smooth(aes(x = date, y = daily_max_temp), colour = "red") +
-  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  scale_x_date(date_breaks = "1 months", date_labels = '%b-%y') +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
-  xlab("\nDate") + 
+  #theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.6)) +
+  xlab("Date") + 
   ylab("Temp (°C)")
 
 # View
@@ -124,6 +131,25 @@ shark_daily_maxtemp_plot
 ggsave(filename = "output/shark_daily_maxtemp_plot.pdf", plot = shark_daily_maxtemp_plot, width = 161, height = 100, units = "mm", dpi = 300)
 ```
 
+### Quick plot of relationship between SST and daily max temps (strong relationship)
+```{r}
+shark_SST_maxtemp_lm_plot <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_point(aes(x = SST, y = daily_max_temp)) +
+  geom_smooth(aes(x = SST, y = daily_max_temp), method = "glm") +
+  theme_minimal() +
+  ylab("Daily max temp (°C)") + 
+  xlab("SST (°C)")
+
+# View  
+shark_SST_maxtemp_lm_plot
+
+# Save - don't need to save as we model properly later
+#ggsave(filename = "output/shark_SST_mintemp_lm_plot.pdf", plot = shark_SST_mintemp_lm_plot, width = 100, height = 100, units = "mm", dpi = 300)
+```
+
+# 3. DAILY MEANS #
 
 # However, during summer months sharks were able to negatively thermoregulate mean body temperatures despite high SSTs:
 ```{r}
@@ -138,7 +164,7 @@ shark_daily_meantemp_plot <-
                   arrow = arrow(length = unit(0.2, "cm"))) +
   scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  theme(axis.text.x = element_text(angle = 20, vjust = 0)) +
   xlab("\nDate") + 
   ylab("Temp (°C)")
 
@@ -150,19 +176,18 @@ ggsave(filename = "output/shark_daily_meantemp_plot.pdf", plot = shark_daily_mea
 
 # The maximum daily downward thermo-regulation was as much as 2°C (on 19 Jan 2022), when SST was around 30°C. Max depth recorded on this date was 122m. (Potentially could investigate what this would come out as at individual level?)
 ```{r}
-shark_daily_temp_diff <- 
+shark_daily_td <- 
   shark_daily_td %>% 
   mutate(temp_diff = daily_max_temp - daily_mean_temp)
 
-shark_daily_temp_diff %>% 
+shark_daily_td %>% 
   #summarise(max_temp_diff = max(temp_diff))
   filter(temp_diff == max(temp_diff))
 ```
 
-
-## When plotted over the course of the year, it is obvious that these diffs are higher in the summer
+## When plotted over the course of the year, it is clear that these diffs are generally higher in the summer
 ```{r}
-shark_daily_temp_diff %>% 
+shark_daily_td %>% 
   ggplot() +
   geom_line(aes(x = date, y = temp_diff)) +
   geom_smooth(aes(x = date, y = temp_diff)) +
@@ -170,6 +195,31 @@ shark_daily_temp_diff %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   xlab("\nDate") + 
+  ylab("Daily temp diff\n(max vs mean daily temp, °C)")
+```
+
+### Quick plot of relationship between SST and daily mean temps (there is one - will have to check effect size in model later)
+```{r}
+shark_daily_td %>% 
+  ggplot() +
+  geom_point(aes(x = SST, y = daily_mean_temp)) +
+  geom_smooth(aes(x = SST, y = daily_mean_temp), method = "glm") +
+  theme_minimal() +
+  ylab("Daily mean temp (°C)") + 
+  xlab("SST (°C)")
+```
+
+# Can also look at mean temp SD ~ SST
+```{r}
+shark_daily_td %>% 
+  ggplot() +
+  #geom_point(aes(x = SST, y = temp_diff)) +
+  #geom_smooth(aes(x = SST, y = temp_diff), method = "glm") +
+  geom_point(aes(x = SST, y = daily_temp_sd)) +
+  geom_smooth(aes(x = SST, y = daily_temp_sd), method = "gam") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+  xlab("SST") + 
   ylab("Daily temp diff\n(max vs mean daily temp, °C)")
 ```
 
@@ -200,8 +250,8 @@ shark_SST_mintemp_lm_plot <-
 # View  
 shark_SST_mintemp_lm_plot
 
-# Save
-ggsave(filename = "output/shark_SST_mintemp_lm_plot.pdf", plot = shark_SST_mintemp_lm_plot, width = 100, height = 100, units = "mm", dpi = 300)
+# Save - don't need to save as we model properly later
+#ggsave(filename = "output/shark_SST_mintemp_lm_plot.pdf", plot = shark_SST_mintemp_lm_plot, width = 100, height = 100, units = "mm", dpi = 300)
 ```
 
 
@@ -325,7 +375,6 @@ ggsave(filename = "output/MaxDep_SST_plot.pdf", plot = MaxDep_SST_plot, width = 
 
 ## Can use a quick regression to see the relationship
 ```{r}
-shark_SST_maxdep_lm_plot <- 
 shark_daily_td %>% 
   ggplot() +
   geom_point(aes(x = SST, y = daily_max_depth)) +
@@ -334,7 +383,6 @@ shark_daily_td %>%
   theme_minimal() +
   ylab("Daily maximum depth (mbsl)") + 
   xlab("SST")
-shark_SST_maxdep_lm_plot
 ```
 
 It looks like the 5°C difference (summer vs winter) leads to a 50m difference in maximum daily depths, from 60 - 120m
@@ -394,8 +442,6 @@ combined_plot
 
 ggsave(filename = "output/combined_plot.pdf", plot = combined_plot, width = 161, height = 280, units = "mm", dpi = 300)
 ```
-
-
 
 
 ```{r}
