@@ -45,7 +45,7 @@ Re-level the hourly variable so that morning/day is first and evening/night afte
 ```
 
 
-## T/D by hour
+## Temp and depth by hour
 ```{r}
 hourly_shark_data <- 
 shark_tp_data %>% 
@@ -65,27 +65,36 @@ shark_tp_data %>%
             median_temp = median(Temp),
             min_temp = min(Temp),
             sd_temp = sd(Temp),
-            se_temp = std.error(Temp)))
+            se_temp = std.error(Temp))) %>% 
+  mutate(Season = factor(Season, levels = c("Spring", "Summer", "Autumn", "Winter")))
 ```
 
 # Mean depth use by hour ~ season
-```{r fig.height=3, fig.width=9}
-hourly_shark_data %>% 
+```{r fig.height=40/25.4, fig.width=160/25.4}
+hr_meandepth <- hourly_shark_data %>% 
   ggplot() +
-  geom_errorbar(aes(ymin = mean_depth-sd_depth, ymax = mean_depth+sd_depth, x = hour), width = 0.1, colour = "grey40", linewidth = 0.2) +
-  geom_line(aes(x = hour, y = mean_depth), colour = "grey20") +
-  geom_point(aes(x = hour, y = mean_depth), pch = 21, fill = "grey60", colour = "black") +
+  annotate("rect", xmin = 0, xmax = 6, ymin = 80, ymax = 0, fill = "grey50", alpha = 0.5) +
+  annotate("rect", xmin = 18, xmax = 24, ymin = 80, ymax = 0, fill = "grey50", alpha = 0.5) +
+  geom_errorbar(aes(ymin = mean_depth-sd_depth, ymax = mean_depth+sd_depth, x = hour), width = 1.5, colour = "grey40", linewidth = 0.2) +
+  #geom_line(aes(x = hour, y = mean_depth), colour = "grey20") +
+  #geom_point(aes(x = hour, y = mean_depth, fill = Season), pch = 21, alpha = 0.5) +
   #geom_line(aes(x = hour, y = median_depth), colour = "grey20") +
   #geom_point(aes(x = hour, y = median_depth), pch = 21, fill = "green4", colour = "black") +
+  scale_fill_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
   scale_y_reverse() +
-  geom_vline(xintercept = c(6, 18)) +
-  theme_bw() +
-  facet_wrap(~ Season, ncol = 4)
+  #geom_vline(xintercept = c(6, 18), colour = "grey30", lwd = 0.3) +
+  theme_minimal() +
+  scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
+  facet_wrap(~ Season, ncol = 4) +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) +
+  ylab("Mean depth\n(m ± SD)") + 
+  xlab(NULL)
 ```
 
 
-# Max depth use by hour ~ season
-```{r fig.height=3, fig.width=9}
+# Max depth use by hour ~ season - prob don't need this
+```{r fig.height=40/25.4, fig.width=160/25.4}
 hourly_shark_data %>% 
   ggplot() +
   #geom_smooth(aes(x = hour, y = max_depth), method = "gam", formula = y~s(x, bs = "cs", k = 22), colour = "blue") +
@@ -99,15 +108,34 @@ hourly_shark_data %>%
 
 
 
-
-# Variation in depth use by hour ~ season
-```{r fig.height=3, fig.width=9}
-hourly_shark_data %>% 
+# Variation in depth use by hour ~ season (uses SD of mean depth)
+```{r fig.height=50/25.4, fig.width=160/25.4}
+hr_sddepth <- hourly_shark_data %>% 
   ggplot() +
-  geom_line(aes(x = hour, y = sd_depth), colour = "black") +
-  geom_vline(xintercept = c(6, 18)) +
-  theme_bw() +
-  facet_wrap(~ Season, ncol = 4)
+  annotate("rect", xmin = 0, xmax = 6, ymin = 0, ymax = 35, fill = "grey50", alpha = 0.5) +
+  annotate("rect", xmin = 18, xmax = 24, ymin = 0, ymax = 35, fill = "grey50", alpha = 0.5) +
+  geom_line(aes(x = hour, y = sd_depth), colour = "grey20") +
+  geom_point(aes(x = hour, y = sd_depth, fill = Season), pch = 21, alpha = 0.5) +
+  scale_fill_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
+  #scale_y_reverse() +
+  theme_minimal() +
+  facet_wrap(~ Season, ncol = 4) +
+  scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
+  theme(legend.position = "none",
+        strip.text = element_blank()) +
+  ylab("Std. dev.\n(m)") + 
+  xlab("Time of day")
+```
+
+
+```{r fig.height=100/25.4, fig.width=160/25.4}
+hr_meandepth/hr_sddepth
+
+hr_plot <- ggarrange(hr_meandepth, hr_sddepth, nrow = 2, label.y = 0.5, heights = c(1,0.65))
+
+ggsave(hr_plot, file = "output/hr_plot.pdf", width = 160, height = 100, units = "mm", dpi = 300)
+
+
 ```
 
 
@@ -115,6 +143,10 @@ hourly_shark_data %>%
 ####### 
 
 
+mutate(tod = case_when(hour %in% (7:16) ~ "Day",
+hour %in% (5:6) ~ "Dawn",
+hour %in% (17:18) ~ "Dusk",
+TRUE ~ "Night")) %>%
 
 
 

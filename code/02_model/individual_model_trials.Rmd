@@ -29,36 +29,20 @@ knitr::opts_chunk$set(
 
 
 ```{r include=FALSE}
-source("code/packages.R")
 rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
 ```
 
 
 ```{r}
 # Load data
-load(file = "data/Rdata/shark_individual_daily_tds.Rdata")
+load(file = "data/Rdata/shark_individual_daily_td.Rdata")
 ```
 
 
 ## Introduction
 
 From basic data exploration steps, it looks like daily maximum depth is the response variable of most interest as a response to changes in SST over time. This document explores the relationship between maximum daily depth and SSTs and also build generalised mixed effect models (GLMMs) to tease apart the effects of other variables of interest.
-
-### Individual shark (transmitter_id) included as a random effect
-```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
-# Last few visual checks
-shark_individual_daily_td %>% 
-  ggplot() +
-  geom_line(aes(x = date, y = daily_max_depth)) +
-  geom_line(aes(x = date, y = daily_depth_sd), colour = "red") +
-  theme_minimal() +
-  scale_x_date(date_breaks = "3 months", date_labels = '%b', ) +
-  xlab("Date") +
-  ylab("Daily max depth (m)") +
-  facet_wrap( ~ transmitter_id, ncol = 5)
-```
-
-Black line = daily maximum depth, Red line = daily depth SD
 
 
 ```{r}
@@ -83,10 +67,10 @@ shark_individual_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_depth)
 #sst_maxd_glmm1a <- glmmTMB(daily_max_depth ~ SST + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE) # Too simple? Gets at the SST story though
 #sst_maxd_glmm2 <- glmmTMB(daily_max_depth ~ Season + (Season|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE) # Too simple - def needs SST in there
 #sst_maxd_glmm2a <- glmmTMB(daily_max_depth ~ SST + Season + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE) # Too simple - need SST * season
-sst_maxd_glmm3 <- glmmTMB(daily_max_depth ~ SST * Season + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
-sst_maxd_glmm4 <- glmmTMB(daily_max_depth ~ SST * Season + Sex + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
-sst_maxd_glmm5 <- glmmTMB(daily_max_depth ~ SST * Season + Sex * TL + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
-sst_maxd_glmm5a <- glmmTMB(daily_max_depth ~ SST * Sex * TL + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
+sst_maxd_glmm3 <- glmmTMB(daily_movement ~ SST * Season + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
+sst_maxd_glmm4 <- glmmTMB(daily_movement ~ SST * Season + Sex + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
+sst_maxd_glmm5 <- glmmTMB(daily_movement ~ SST * Season + Sex * TL + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
+sst_maxd_glmm5a <- glmmTMB(daily_movement ~ SST * Sex * TL + (SST|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
 #sst_maxd_glmm6 <- glmmTMB(daily_max_depth ~ Sex * TL + (1|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
 
 ```
@@ -114,6 +98,8 @@ AICc(#sst_maxd_glmm1,
      sst_maxd_glmm5, 
      sst_maxd_glmm5a)
 ```
+Model 5 lowest AIC
+
 ## R2
 ```{r}
 #sst_maxd_glmm1 %>% performance::r2_nakagawa()
@@ -139,17 +125,16 @@ sst_maxd_final %>% performance::r2_nakagawa()
 
 ```
 
-## Summary table
+## Mod investigation
 ```{r}
+# Summary
 summary(sst_maxd_final)
-```
-
 # Summary of random effects
-```{r ranfeffects}
 sst_maxd_final %>% ranef()
 ```
 
-# Quick overview of effects and interactions:
+
+# Quick overview plots of effects and interactions:
 
 ## Simple fixed effects - Model 5
 ```{r echo=FALSE}
@@ -171,6 +156,8 @@ Looks like separately, there are some significant effects here:
 ```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
 sst_maxd_final %>% ggemmeans(~ Season*SST) %>% plot
 sst_maxd_final %>% ggemmeans(~ SST*Season) %>% plot
+sst_maxd_final %>% ggemmeans(~ Season+Sex) %>% plot
+
 ```
 Quick interpretation - on average deeper in the summer, shallower in the winter and more variable in spring and autumn.
 
@@ -206,16 +193,50 @@ However, note the warning about interactions:
 ```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
 sst_maxd_final %>% ggemmeans(~ SST * Sex) %>% plot
 sst_maxd_final %>% ggemmeans(~ SST * TL) %>% plot
+sst_maxd_final %>% ggemmeans(~ TL * SST) %>% plot
 ```
 
 
 ```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
-sst_maxd_final %>% emmeans(~ SST)
-sst_maxd_final %>% emtrends("Sex", var = "SST")# %>% contrast()
+sst_maxd_final %>% emmeans(~ SST)# %>% regrid()
+sst_maxd_final %>% emtrends("Sex", var = "SST")# %>% regrid()# %>% contrast()
 ```
 
 
+```{r}
+sst_maxd_final %>% tidy(conf.int = TRUE)
+```
 
+Reminder of model structure:
+
+SST * Season + Sex * TL 
+
+
+```{r}
+Sex_TL_grid <- shark_individual_daily_td %>% 
+    with(list(#Sex = levels(Sex),
+              TL = seq_range(TL, n = 100)))
+
+  
+newdata_Sex_TL <- sst_maxd_final %>% 
+  emmeans(~TL, at = Sex_TL_grid) %>% 
+  regrid() %>% 
+  as_tibble()
+
+#(mod_plot <- 
+  ggplot(newdata_Sex_TL, aes(x = TL, y = response)) +
+                             #colour = Sex, fill = Sex)) +
+  geom_ribbon(aes(ymin=asymp.LCL, ymax=asymp.UCL), color=NA, alpha=0.3) +
+  geom_line() +
+  geom_point(data=shark_individual_daily_td,  aes(y=daily_movement, x = TL), alpha = 0.4, pch = 21) +
+  theme_minimal() +
+ # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  ylab("Daily maximum depth (m)") + 
+  xlab("\nTotal length (cm)")
+  #)
+
+
+```
 
 
 

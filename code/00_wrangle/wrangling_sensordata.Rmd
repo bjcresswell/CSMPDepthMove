@@ -189,7 +189,9 @@ shark_tp_data <- shark_tp_data %>%
     date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
     date < date("2022-12-31")  ~ "Spring",
     date > date("2022-09-30") ~ "Spring"))) %>% 
-  filter(date > date("2021-10-27"))
+  filter(date > date("2021-10-27")) %>% 
+  mutate(Sex = factor(case_when(grepl("f", Sex) ~ "Female",
+                                grepl("m", Sex) ~ "Male")))
 ```
 
 

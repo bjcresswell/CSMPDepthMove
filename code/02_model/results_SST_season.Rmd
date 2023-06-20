@@ -1,0 +1,211 @@
+---
+title: "Individual movement results - Season * SST"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	include = FALSE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+#rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
+```
+
+
+This document digs down into the interactive effect of Season and SST on daily depth movments in individual sharks
+The results of the model will make predictions for the whole range of SSTs for all four seasons so we need to truncate our output model data accordingly.
+To see the real range in SSTs across the seasons we'll need to load the base tbl and check:
+
+# Load
+```{r}
+load(file = "data/Rdata/shark_individual_daily_td.Rdata")
+```
+
+
+# Check
+```{r}
+winter <- 
+  shark_individual_daily_td %>% 
+  filter(Season == "Winter") # 25.7 - 27.9°C
+
+summer <- 
+  shark_individual_daily_td %>% 
+  filter(Season == "Summer") # 28.8 - 30.5°C
+
+spring <- 
+  shark_individual_daily_td %>% 
+  filter(Season == "Spring") # 27.5 - 30.5°C
+
+autumn <- 
+  shark_individual_daily_td %>% 
+  filter(Season == "Autumn") # 26.5 - 30°C
+```
+
+
+We'll use these values to set limits on our model data
+
+
+# Load model
+```{r}
+load(file = "data/Rdata/final_model.Rdata")
+```
+
+
+# Options
+Can present these results two ways: 
+1. With SST as an ordinal variable using max, min and median values within the observed range - arguably easier to interpret
+2. With SST as a continuous variable presenting all the predicted values with a confint 'ribbon' - potentially 'truer' to the data
+
+Will do both and decide on final presentation later.
+
+1. SST as ordinal
+
+# Create reference grid, emmmeans tbl and truncate SSTs as above
+```{r}
+# Reference grid
+Season_SST_grid <- shark_individual_daily_td %>% 
+    with(list(Season = levels(Season),
+              SST = c(26, 28, 30)))
+# New data
+newdata_Season_SST <- sst_maxd_final %>% 
+  emmeans(~Season|SST, at = Season_SST_grid) %>% 
+  regrid() %>% 
+  as_tibble()
+
+# Truncate SST values according to season
+newdata_Season_SST <- newdata_Season_SST %>% 
+  filter(Season == "Spring" & SST > 27.5 | 
+           Season == "Autumn" & SST > 26.5 |
+           Season == "Summer" & SST > 28.8 |
+           Season == "Winter" & SST < 27.9) %>% 
+  mutate(SST = factor(SST))
+```
+
+
+# And plot
+```{r  fig.width = 100/25.4, fig.height = 80/25.4}
+(Season_SST_plot <- 
+newdata_Season_SST %>% 
+  ggplot() +
+  geom_linerange(aes(x = Season, y = response, ymin=asymp.LCL, ymax=asymp.UCL, colour = SST, group = SST), colour = "grey40", position=position_dodge(0.25)) +
+  geom_point(aes(x = Season, y = response, colour = SST, fill = SST), position=position_dodge(0.25), size = 4) +
+  #scale_shape_manual(values = c(21, 22, 23)) +
+  scale_fill_manual(values = c("darkblue", "dodgerblue", "red")) +
+  scale_colour_manual(values = c("darkblue", "dodgerblue", "red")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(10, 115), breaks = c(0, 25, 50, 75, 100)) +
+  #theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  #ylab("Daily depth movement (m)\n(e.m. mean ± 95%CI)\n") + 
+  xlab("\nSeason") +
+  theme(legend.position = c(0.88, 0.74 ),
+        legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title.x = element_text(size = 8),
+        axis.text.x = element_text(size = 8),
+        axis.title.y = element_blank(),
+        axis.text.y = element_blank(),
+        legend.title = element_text(size = 8)))
+        
+```
+
+# Save
+```{r}
+ggsave(Season_SST_plot, file = "output/Season_SST_plot.pdf", width = 80, height = 90, units = "mm", dpi = 300)
+```
+
+
+
+2. SST as continuous
+
+# Create reference grid, emmmeans tbl and truncate SSTs as above
+```{r}
+# Reference grid
+Season_SST_grid2 <- shark_individual_daily_td %>% 
+    with(list(Season = levels(Season),
+              SST = seq_range(SST, n = 100)))
+
+# New data  
+newdata_Season_SST2 <- sst_maxd_final %>% 
+  emmeans(~Season|SST, at = Season_SST_grid2) %>% 
+  regrid() %>% 
+  as_tibble()
+
+#spring 27.5 - 30.53°C
+#summer 28.8 - 30.5°C
+#autumn 26.5 - 30°C
+#winter 25.7 - 27.9°C
+
+# Truncate
+newdata_Season_SST2 <- newdata_Season_SST2 %>% 
+  filter(Season == "Spring" & SST >= 27.5 | 
+           Season == "Spring" & SST <= 30.5 |
+           Season == "Autumn" & SST >= 26.48 |
+           Season == "Autumn" & SST <= 29.92 |
+           Season == "Summer" & SST >= 28.77 |
+           Season == "Winter" & SST <= 27.9)
+```
+
+# And plot
+```{r  fig.width = 140/25.4, fig.height = 90/25.4}
+(Season_SST_plot2 <- 
+newdata_Season_SST2 %>% 
+  ggplot() +
+  geom_ribbon(aes(x = SST, y = response, ymin=asymp.LCL, ymax=asymp.UCL, group = Season), alpha = 0.2) +
+  geom_line(aes(x = SST, y = response, colour = Season, group = Season), size = 1) +
+  #scale_shape_manual(values = c(21, 22, 23)) +
+  scale_fill_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
+  scale_colour_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(10, 115), breaks = c(0, 25, 50, 75, 100)) +
+# theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  ylab("Daily depth movement (m)\n(e.m. mean ± 95%CI)") + 
+  xlab("\nSST (°C)") +
+  theme(legend.position = c(0.16, 0.7),
+        legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title = element_text(size = 8),
+        axis.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.text = element_text(size = 8)))
+
+```
+
+# Save
+```{r}
+ggsave(Season_SST_plot2, file = "output/Season_SST_plot2.pdf", width = 120, height = 90, units = "mm", dpi = 300)
+```
+
+```{r  fig.width = 180/25.4, fig.height = 90/25.4}
+Season_SST_plot3 <- ggarrange(Season_SST_plot2, Season_SST_plot, nrow = 1, label.y = 0.5, widths = c(1.1, 0.6))
+Season_SST_plot3
+```
+
+# Save
+```{r}
+ggsave(Season_SST_plot3, file = "output/Season_SST_plot3.pdf", width = 170, height = 70, units = "mm", dpi = 300)
+```
+
+
+```{r}
+# END #
+```

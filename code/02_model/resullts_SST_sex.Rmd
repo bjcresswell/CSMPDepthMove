@@ -1,0 +1,158 @@
+---
+title: "Individual movement results - SST * Sex"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	include = FALSE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
+```
+
+
+This document digs down into the interactive effect of SST and Sex on the magnitude of daily depth movements in individual sharks
+
+# Load
+```{r}
+load(file = "data/Rdata/shark_individual_daily_td.Rdata")
+```
+
+# Load model
+```{r}
+load(file = "data/Rdata/final_model.Rdata")
+```
+
+
+# Options
+
+Probably want two plots here -
+
+1. Differences in depth use between sexes at the average annual SST
+2. Differences in depth use between sexes across the full range of SSTs
+
+1. Inter-sex differences at average SST:
+
+```{r}
+shark_individual_daily_td %>% 
+  ungroup %>% 
+  summarise(mean_SST = mean(SST))
+  
+```
+
+# Create reference grid, emmmeans tbl and truncate SSTs as above
+```{r}
+# Reference grid
+sex_SST_grid <- shark_individual_daily_td %>% 
+    with(list(Sex = levels(Sex),
+              SST = 28.34))
+# New data
+newdata_sex_SST <- sst_maxd_final %>% 
+  emmeans(~Sex|SST, at = sex_SST_grid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  mutate(SST = factor(SST))
+```
+
+
+# And plot
+```{r  fig.width = 100/25.4, fig.height = 80/25.4}
+(sex_SST_plot1 <- 
+newdata_sex_SST %>% 
+  ggplot() +
+  geom_linerange(aes(x = Sex, y = response, ymin=asymp.LCL, ymax=asymp.UCL), colour = "grey40") +
+  geom_point(aes(x = Sex, y = response, shape = Sex, fill = Sex), size = 4) +
+  scale_shape_manual(values = c(23, 22))  +
+  scale_fill_manual(values = c("darkblue", "dodgerblue")) +
+  scale_colour_manual(values = c("darkblue", "dodgerblue")) +
+  theme_minimal() +
+# theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  ylab("Daily depth movement (m)\n(e.m. mean ± 95%CI)\n") + 
+  xlab("\nSex") +
+  theme(legend.position = c(0.25, 0.82),
+        legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title = element_text(size = 9),
+        legend.title = element_text(size = 8)))
+```
+
+# Save
+```{r}
+ggsave(sex_SST_plot1, file = "output/Sex_SST_plot1.pdf", width = 80, height = 90, units = "mm", dpi = 300)
+```
+
+
+
+2. Inter-sex differences across full range of SST:
+
+# Create reference grid, emmmeans tbl and truncate SSTs as above
+```{r}
+# Reference grid
+Sex_SST_grid2 <- shark_individual_daily_td %>% 
+    with(list(Sex = levels(Sex),
+              SST = seq_range(SST, n = 100)))
+
+# New data  
+newdata_Sex_SST2 <- sst_maxd_final %>% 
+  emmeans(~Sex|SST, at = Sex_SST_grid2) %>% 
+  regrid() %>% 
+  as_tibble()
+```
+
+# And plot
+```{r  fig.width = 140/25.4, fig.height = 60/25.4}
+(Sex_SST_plot2 <- 
+newdata_Sex_SST2 %>% 
+  ggplot() +
+  geom_ribbon(aes(x = SST, y = response, ymin=asymp.LCL, ymax=asymp.UCL, group = Sex), alpha = 0.2) +
+  geom_line(aes(x = SST, y = response, colour = Sex, group = Sex), size = 1) +
+  #scale_shape_manual(values = c(21, 22, 23)) +
+  scale_fill_manual(values = c("darkblue", "dodgerblue")) +
+  scale_colour_manual(values = c("darkblue", "dodgerblue")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 110), breaks = c(0, 25, 50, 75, 100)) +
+# theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  ylab("Daily depth movement (m)\n(e.m. mean ± 95%CI)") + 
+  xlab("\nSST (°C)") +
+  theme(legend.position = c(0.14, 0.76),
+        legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title = element_text(size = 8),
+        axis.text = element_text(size = 8),
+        legend.title = element_text(size = 8),
+        legend.text = element_text(size = 8)))
+
+
+
+```
+
+# Save
+```{r}
+ggsave(Sex_SST_plot2, file = "output/Sex_SST_plot2.pdf", width = 115, height = 60, units = "mm", dpi = 300)
+```
+
+
+```{r}
+# END #
+```
