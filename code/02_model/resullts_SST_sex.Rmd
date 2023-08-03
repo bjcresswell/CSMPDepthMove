@@ -142,9 +142,6 @@ newdata_Sex_SST2 %>%
         axis.text = element_text(size = 8),
         legend.title = element_text(size = 8),
         legend.text = element_text(size = 8)))
-
-
-
 ```
 
 # Save

@@ -97,7 +97,7 @@ ggsave(sex_TL_plot, file = "output/Sex_TL_plot.pdf", width = 65, height = 50, un
 
 
 # Combine with the Sex*SST plot
-```{r  fig.width = 180/25.4, fig.height = 90/25.4}
+```{r  fig.width = 170/25.4, fig.height = 70/25.4}
 SST_sex_TL_plot <- ggarrange(Sex_SST_plot2, sex_TL_plot, nrow = 1, label.y = 0.5, widths = c(1.1, 0.6))
 
 SST_sex_TL_plot

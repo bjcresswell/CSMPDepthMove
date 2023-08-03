@@ -61,7 +61,7 @@ osprey_rov_thin <- ROV_temp_comb %>%
 
 
 # Plot
-```{r}
+```{r  fig.width = 170/25.4, fig.height = 70/25.4}
 osp_temp_atten <- 
   ggplot() +
   geom_point(aes(x = temp, y = depth), data = osprey_ctd_thin, bg = "skyblue", 
@@ -82,7 +82,7 @@ osp_temp_atten
 
 # Save
 ```{r}
-ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten,  width = 120, height = 60, units = "mm", dpi = 300)
+ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten,  width = 170, height = 70, units = "mm", dpi = 300)
 ```
 
 

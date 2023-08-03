@@ -1,5 +1,7 @@
 library(oce)
 library(ocedata)
+source("code/packages.R")
+
 
 getwd()
 ctd_raw <- read.ctd('data/CTD/FK200802_CTD010_20200820.cnv')

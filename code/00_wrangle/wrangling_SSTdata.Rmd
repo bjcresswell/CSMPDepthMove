@@ -62,7 +62,7 @@ Study period - October 2021 - October 2022
 SST <- read_csv('data/SST/sst_geopolar_osprey_19850101-20230430.csv', skip = 5) %>% 
   mutate(date = ymd(dmy(Date)), .keep = "unused", .before = "SST") %>% 
   filter(#SST >0,
-         as_date(date) >= as_date("2021-10-28"),
+         as_date(date) >= as_date("2021-10-01"),
          as_date(date) <= as_date("2022-10-31"))
 save(SST, file = "data/RData/SST.Rdata")
 ```
@@ -117,7 +117,7 @@ study_MM
 
 
 ## Plot study SST against AMM again but now with MM for study period in
-```{r}
+```{r  fig.width = 170/25.4, fig.height = 100/25.4}
 SSTvAMMplot <- 
 ggplot() +
   geom_line(aes(x = date, y = SST), data = SST, colour = "grey60") +
@@ -128,7 +128,7 @@ ggplot() +
   geom_point(aes(x = Month, y = MM), data = study_MM, fill = "firebrick", colour = "black",
              stroke = 0.8, pch = 24, alpha = 0.9, size = 2) +
   theme_bw() +
-  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y') +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b-%y', limits = c(as_date("2021-10-14"), as_date("2022-10-16"))) +
   theme(axis.text.x = element_text(angle = 90,  vjust = 3, hjust = 0.3)) +
   xlab("\nMonth/year") + 
   ylab("Temp (°C)\n")
@@ -137,7 +137,7 @@ SSTvAMMplot
 
 # Save
 ```{r}
-ggsave(filename = "output/SSTvAMMplot.png", SSTvAMMplot, width = 120, height = 60, units = "mm", dpi = 300)
+ggsave(filename = "output/SSTvAMMplot.pdf", SSTvAMMplot, width = 170, height = 100, units = "mm", dpi = 300)
 ```
 
 ## Hottest and coldest SSTs recorded for the study period
