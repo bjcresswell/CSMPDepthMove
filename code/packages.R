@@ -6,7 +6,12 @@ library(readxl)
 library(plotrix)    # for SEM calc 
 library(lubridate)  # dates
 library(magrittr)
+library(sourceRmd)
 library(tidyverse)
+
+# Oceanography
+library(oce)
+library(ocedata)
 
 # Plotting
 library(patchwork)
@@ -29,11 +34,4 @@ library(DHARMa)     #for residual diagnostics
 library(MuMIn)
 library(tidybayes)  #for more tidying outputs
 library(ggeffects)  #for partial plots
-
-source_rmd = function(file, ...) {
-  tmp_file = tempfile(fileext=".R")
-  on.exit(unlink(tmp_file), add = TRUE)
-  knitr::purl(file, output=tmp_file)
-  source(file = tmp_file, ...)
-}
 

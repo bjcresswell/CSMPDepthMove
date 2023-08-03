@@ -1,5 +1,3 @@
-library(oce)
-library(ocedata)
 source("code/packages.R")
 
 
@@ -10,3 +8,5 @@ osprey_ctd <-
   ctd_raw@data %>% 
   as_tibble() %>% 
   filter(depth <101)
+
+write_csv(osprey_ctd, 'output/falkor_ctd_osprey_20200820.csv')
