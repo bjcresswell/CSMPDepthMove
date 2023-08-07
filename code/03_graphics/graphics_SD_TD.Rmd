@@ -1,0 +1,64 @@
+---
+title: "Plotting SD in temp and depth"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 70/25.4
+    fig_width: 170/25.4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	include = TRUE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+source("code/packages.R")
+getwd()
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+sourceRmd("code/02_model/grouped_models_depth.Rmd")
+sourceRmd("code/02_model/grouped_models_temp.Rmd")
+```
+
+
+# Model results
+## Cowplot
+```{r fig.height = 62/25.4, fig.width = 124/25.4}
+std_dev_model_fig <- cowplot::plot_grid(mod2b_plot, mod7_plot, nrow = 1, labels = c('A', 'B'), label_size = 9, align = "h") +
+  theme(plot.background = element_rect(color = "black"))
+
+std_dev_model_fig
+```
+
+
+## Save
+```{r}
+ggsave(filename = "output/std_dev_model_fig.pdf", plot = std_dev_model_fig, width = 124, height = 62, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+
+
+
+

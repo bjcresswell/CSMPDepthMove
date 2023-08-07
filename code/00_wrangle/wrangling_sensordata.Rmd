@@ -164,7 +164,7 @@ shark_tp_data <-
   dplyr::select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date_tagged, 
          Location_tagged, Site_tagged, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
   filter(!grepl("Lagoon", station_name_long),        # just a few shark detections (2 individs 14041 and 14059) from lagoon1 so filtering out
-#         station_name_long != "Overnight_Mooring"   # may need to leave ONM out as it only has shallow/hot detections but will leave in for now
+#         station_name_long != "Overnight_Mooring"   # may need to leave ONM out as it only has shallow detections but will leave in for now
          ) %>%  
   filter(detection_timestamp < as.Date("2022-11-01 00:00:01")) %>% 
   arrange(detection_timestamp) %>% 

@@ -22,6 +22,7 @@ library(ggpubr)
 library(glmmTMB)
 library(effects)   #for partial effects plots
 library(modelr)
+library(MASS)
 library(mgcv)
 library(brms)       #for fitting models in STAN
 library(rstan)
