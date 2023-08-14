@@ -37,10 +37,11 @@ source("code/00_wrangle/wrangling_CTDdata.R")
 source("code/00_wrangle/wrangling_ROVdata.R")
 ```
 
+# Depth profiles:
 
 # Need to thin the data out a bit for plotting:
-## CTD
 
+## CTD
 ```{r}
 osprey_ctd_thin <- osprey_ctd %>% 
   filter(depth <101) %>% 
@@ -61,7 +62,7 @@ osprey_rov_thin <- ROV_temp_comb %>%
 
 
 # Plot
-```{r  fig.width = 170/25.4, fig.height = 70/25.4}
+```{r  fig.width = 60/25.4, fig.height = 70/25.4}
 osp_temp_atten <- 
   ggplot() +
   geom_point(aes(x = temp, y = depth), data = osprey_ctd_thin, bg = "skyblue", 
@@ -71,19 +72,50 @@ osp_temp_atten <-
   geom_smooth(aes(x = temperature, y = depth), data = osprey_ctd, colour = "dodgerblue", method = "loess", formula = 'y ~ poly(x)') +
   geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red", method = "loess", formula = 'y ~ poly(x)') +
   scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
-  scale_y_reverse() +
-  theme_bw() +
+  scale_y_reverse(position = "right") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 9,  vjust = 1),
+        axis.text.y = element_text(size = 9),
+        axis.title = element_text(size = 9)) +
  #geom_hline(yintercept = -100, lwd = 0.2, lty = 88) +
-  xlab("Temp (°C)") + 
-  ylab("Depth (m below sea level)")
+  xlab("Temp (°C)") +
+  ylab("Depth (m below sea level)") 
 
 osp_temp_atten
 ```
 
 # Save
 ```{r}
-ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten,  width = 170, height = 70, units = "mm", dpi = 300)
+ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten, device = cairo_pdf, width = 170, height = 70, units = "mm", dpi = 300)
 ```
+
+
+
+# Combine with SST plot
+
+```{r}
+sourceRmd("code/00_wrangle/wrangling_SSTdata.Rmd")
+SSTvAMMplot
+```
+
+```{r  fig.width = 170/25.4, fig.height = 70/25.4}
+watertemp_fig <- 
+  cowplot::plot_grid(SSTvAMMplot, osp_temp_atten, nrow = 1, labels = c('A', 'B'), label_size = 9, #label_y = 1,
+                                               rel_widths = c(1.1, 0.5), align = "h") +
+    theme(plot.background = element_rect(color = "black")) 
+watertemp_fig
+```
+
+
+
+# Save
+```{r}
+ggsave(filename = "output/watertemp_fig.pdf", watertemp_fig, device = cairo_pdf, width = 170, height = 70, units = "mm", dpi = 300)
+```
+
+
+
+
 
 
 

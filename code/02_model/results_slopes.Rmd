@@ -34,10 +34,6 @@ source("code/packages.R")
 ```
 
 
-This document digs down into the interactive effect of Season and SST on daily depth movments in individual sharks
-The results of the model will make predictions for the whole range of SSTs for all four seasons so we need to truncate our output model data accordingly.
-To see the real range in SSTs across the seasons we'll need to load the base tbl and check:
-
 # Load data
 ```{r}
 load(file = "data/Rdata/shark_individual_daily_td.Rdata")
@@ -49,102 +45,77 @@ load(file = "data/Rdata/shark_individual_daily_td.Rdata")
 load(file = "data/Rdata/final_model.Rdata")
 ```
 
+# Intro
+This document digs down into the interactive terms in the model:
 
-# Options
-Can present these results two ways: 
-1. With SST as an ordinal variable using max, min and median values within the observed range - arguably easier to interpret
-2. With SST as a continuous variable presenting all the predicted values with a confint 'ribbon' - potentially 'truer' to the data
+Season * SST
+Sex * TL
 
-Will do both and present together
+## To do this we'll need to calculate mean levels of:
+- SST
+- TL
+and perform contrast across those levels
 
-1. SST as ordinal
-
-Determine IQR
+# SST = approx 28.5°C
 ```{r}
 shark_individual_daily_td %>% 
   ungroup() %>% 
-  summarise_at(vars(SST),
+  summarise_at(vars(SST),list(min = min, median=median, mean = mean, max = max))
+```
+# TL - approx 150cm
+```{r}
+shark_individual_daily_td %>% 
+  ungroup() %>% 
+  group_by(Sex) %>% 
+  summarise_at(vars(TL),
                list(min=min, 
-                    Q1=~quantile(., probs = 0.25),
-                    median=median, 
                     mean = mean,
-                    Q3=~quantile(., probs = 0.75),
                     max=max))
 ```
 
-# Also need to know the seasonal ranges
-```{r}
-season_ranges <-  
-  shark_individual_daily_td %>% 
-  filter(Season == "Winter") %>%  # 25.7 - 27.8°C
-  droplevels() %>% 
-  summarise_at(vars(SST),
-               list(min=min, max=max)) %>%
-  mutate(Season = "Winter") %>% 
-  bind_rows(
-  shark_individual_daily_td %>% 
-  filter(Season == "Summer") %>%  # 28.1 - 30.5°C
-  droplevels() %>% 
-  summarise_at(vars(SST),
-               list(min=min, max=max)) %>% 
-  mutate(Season = "Summer")) %>% 
-  bind_rows(
-  shark_individual_daily_td %>% 
-  filter(Season == "Spring") %>%  # 26.5 - 29.7°C
-  droplevels() %>% 
-  summarise_at(vars(SST),
-               list(min=min, max=max)) %>% 
-  mutate(Season = "Spring")) %>% 
-  bind_rows(
-  shark_individual_daily_td %>% 
-  filter(Season == "Autumn") %>%  # 27.7 - 30.1°C
-  droplevels() %>% 
-  summarise_at(vars(SST),
-               list(min=min, max=max)) %>% 
-  mutate(Season = "Autumn"))
-```
+# Calculate trends at those levels across:
+1°C 
+10 cm TL
 
-
-We'll use these values to set sensible limits on our model data
-
-```{r}
-season_ranges
-```
-
-# Create reference grid, emmmeans tbl and truncate SSTs as above
+## Create reference grid, emmmeans tbl and truncate SSTs as above
 ```{r}
 # Reference grid
-Season_SST_grid <- shark_individual_daily_td %>% 
+results_grid <- shark_individual_daily_td %>% 
     with(list(Season = levels(Season),
-             # SST = c(25.7, 28.6, 30.5)))
-             SST = c(26, 28, 30)))
-
-# New data
-newdata_Season_SST <- sst_maxd_final %>% 
-  emmeans(~Season|SST, at = Season_SST_grid) %>% 
-  regrid() %>% 
-  as_tibble()
-
-# Truncate SST values according to season
-newdata_Season_SST <- newdata_Season_SST %>% 
-  filter(Season == "Spring" | #& SST > 27.5 | 
-         Season == "Autumn" | #& SST > 26.5 |
-         Season == "Summer" & SST > 28.8 |
-         Season == "Winter" & SST < 27.9) %>% 
-  mutate(SST = factor(SST))
+              TL = c(155, 145),                       # Mean TL = 150cm
+              Sex = levels(Sex),
+              SST = c(29, 28)))                       # Mean SST = 28.34, Median SST = 28.56
 ```
 
-# Contrasts
+
+
 ```{r}
-#season_emm <- 
+season_sst_slopes <- 
   sst_maxd_final %>% 
-  emmeans(~SST|Season, at = Season_SST_grid) %>%
+  emmeans(~SST|Season, at = results_grid) %>%
   regrid() %>% 
   pairs() %>% 
   confint() %>% 
+ # tab_df()
   as_tibble() %>% 
-  filter(!Season == "Summer" | contrast == "SST28 - SST30",
-         !Season == "Winter" | contrast == "SST26 - SST28")
+  mutate(across(where(is.numeric), round, 2))
+
+season_sst_slopes
+```
+
+
+```{r}
+sex_tl_slopes <- 
+  sst_maxd_final %>% 
+  emmeans(~TL|Sex, at = results_grid) %>%
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+ # tab_df()
+  as_tibble() %>% 
+  mutate(across(where(is.numeric), round, 2))
+  
+sex_tl_slopes
 ```
 
 
@@ -179,6 +150,43 @@ newdata_Season_SST %>%
 ```{r}
 ggsave(Season_SST_plot, file = "output/Season_SST_plot.pdf", width = 80, height = 90, units = "mm", dpi = 300)
 ```
+
+
+# 1.a. Calculate mean effect of 1°C SST change on depth use across seasons (i.e. slope for all seasons)
+## Create reference grid, emmmeans tbl and truncate SSTs as above
+```{r}
+# Reference grid
+Season_SST_grid_1deg <- shark_individual_daily_td %>% 
+    with(list(Season = levels(Season),
+              TL = c(145, 155),                       # Mean TL = 150cm
+#              Sex = levels(Sex),
+             SST = c(28, 29)))                       # Mean SST = 28.34, Median SST = 28.56
+   
+# New data
+newdata_Season_SST_1deg <- sst_maxd_final %>% 
+  emmeans(~Season|SST, at = Season_SST_grid_1deg) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  mutate(SST = factor(SST))
+```
+
+
+
+```{r}
+#season_emm <- 
+  sst_maxd_final %>% 
+  emmeans(~SST|Season, at = Season_SST_grid_1deg) %>%
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  tab_df()
+  as_tibble() 
+```
+
+
+
+
+
 
 
 2. SST as continuous

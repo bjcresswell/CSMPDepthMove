@@ -43,7 +43,7 @@ Females much more variable in terms of depth use. Perhaps could be unbalanced sa
 
 ```{r}
 shark_tp_data %>% 
-  select(transmitter_id, Sex) %>% 
+  dplyr::select(transmitter_id, Sex) %>% 
   distinct() %$%
   summary(Sex)
 ```

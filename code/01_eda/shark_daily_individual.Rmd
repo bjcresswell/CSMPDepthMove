@@ -38,7 +38,7 @@ load(file = "data/Rdata/shark_tp_data.Rdata")
 
 # Load SST data
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=6}
-source_rmd("code/00_wrangle/wrangling_SSTdata.Rmd")
+sourceRmd("code/00_wrangle/wrangling_SSTdata.Rmd")
 ```
 
 # Individual daily temp summary
@@ -53,9 +53,10 @@ shark_individual_daily_temps <-
             daily_min_temp = min(Temp),
             daily_mean_temp = mean(Temp),
             daily_temp_sd = sd(Temp)) %>% 
-  full_join(SST)
+  full_join(SST %>% filter(date > date("2021-10-27"))) # Filter out dates earlier than the first detection 
 #shark_individual_daily_temps
 ```
+
 
 ## Individual daily depth summary
 Going to add in SST data, Sex and TL at this point also as we'll need for modelling shortly
@@ -70,7 +71,7 @@ shark_individual_daily_depths <-
             daily_mean_depth = mean(Depth),
             daily_depth_sd = sd(Depth),
             daily_movement = daily_max_depth - daily_min_depth) %>% 
-  full_join(SST)
+  full_join(SST %>% filter(date > date("2021-10-27"))) # Filter out dates earlier than the first detection 
 #shark_individual_daily_depths
 ```
 
@@ -79,13 +80,12 @@ shark_individual_daily_depths <-
 shark_individual_daily_td <- 
  shark_individual_daily_depths %>% 
   full_join(shark_individual_daily_temps) %>% 
-  mutate(Season = factor(case_when(
-    date >= date("2022-01-01") & date<= date("2022-03-31") ~ "Summer",
-    date >= date("2022-07-01") & date<= date("2022-09-30") ~ "Winter",
-    date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
-    date < date("2022-12-31")  ~ "Spring",
-    date > date("2022-09-30") ~ "Spring"))) %>% 
-  filter(date > date("2021-10-29"))
+  mutate(Month = as_factor(month(date, label = TRUE, abbr = TRUE)),
+         Season = factor(case_when(Month %in% c("Dec" , "Jan", "Feb") ~ "Summer",
+                                   Month  %in% c("Mar" , "Apr", "May") ~ "Autumn",
+                                   Month  %in% c("Jun", "Jul", "Aug") ~ "Winter",
+                                   Month  %in% c("Sep" , "Oct", "Nov") ~ "Spring"))) %>% 
+  ungroup()
 ```
 
 ## Note that season automatically gets levelled by N hemisphere!!??
@@ -196,7 +196,7 @@ ggplot() +
   geom_smooth(aes(x = date, y = daily_mean_temp), colour = "grey40") +
   #geom_line(aes(x = week_date, y = weekly_rolling_mean), data = SSTcomb, colour = "black") +
   #geom_smooth(aes(x = week_date, y = weekly_rolling_mean), data = SSTcomb, colour = "black") +
-  geom_line(aes(x = date, y = SST), data = SST, colour = "black") +
+  geom_line(aes(x = date, y = SST), colour = "black") +
   #geom_line(aes(x = Month, y = SST), data = AMM_for_plot, colour = "black") +
   scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
   theme_minimal() +
@@ -237,9 +237,9 @@ shark_individual_daily_depth_plot
 ```
 
 
-
-```{r}
-shark_td_lm_individ_plot <- 
+# Explore individual depth responses to higher SSTs
+```{r fig.width = 10, fig.height = 16}
+#shark_td_lm_individ_plot <- 
 shark_individual_daily_td %>% 
   ggplot() +
   geom_point(aes(x = SST, y = daily_max_depth)) +
@@ -249,7 +249,7 @@ shark_individual_daily_td %>%
   ylab("Daily maximum depth (mbsl)") + 
   xlab("SST") +
   facet_wrap(facets = "transmitter_id", ncol = 3)
-shark_td_lm_individ_plot
+#shark_td_lm_individ_plot
 ```
 
 

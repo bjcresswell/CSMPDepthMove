@@ -1,0 +1,114 @@
+---
+title: "Figure production - effect of SST on internal body temp"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 70/25.4
+    fig_width: 170/25.4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	include = TRUE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+source("code/packages.R")
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+## Plot daily temps
+```{r fig.width = 170/25.4, fig.height = 70/25.4}
+# GET PLOT FROM gam_temptime.Rmd
+sourceRmd('code/02_model/gam_temptime.Rmd')
+# View
+shark_daily_temps_plot
+# Save
+#ggsave(filename = "output/shark_daily_temps_plot.pdf", plot = shark_daily_temps_plot, width = 161, height = 100, units = "mm", dpi = 300)
+```
+# Combine with SST plot
+```{r fig.width = 170/25.4, fig.height = 30/25.4}
+SST_plot_plain <- 
+  shark_daily_td %>% 
+  ggplot() +
+  geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.5) +
+  scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
+  ylab("SST (°C)") +
+  theme_minimal() +
+  theme(axis.title.y = element_text(size = 9, hjust = 0.1, colour = "black"),
+        axis.text.y = element_text(size = 9, colour = "black"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank())
+        #panel.background = element_rect(fill = "transparent", colour = "black", linewidth = 1),
+        #panel.border = element_rect(fill = "transparent", colour = "black", linewidth = 1),
+
+SST_plot_plain
+```
+
+```{r fig.width = 170/25.4, fig.height = 80/25.4}
+shark_temp_timeseries_fig <- cowplot::plot_grid(SST_plot_plain, shark_daily_temps_plot, nrow = 2, labels = c('A'), label_size = 9, label_y = 1,
+                                               rel_heights = c(0.6, 1.5), align = "v") +
+    theme(plot.background = element_rect(color = "black")) 
+
+shark_temp_timeseries_fig
+```
+
+
+```{r}
+ggsave(filename = "output/shark_temp_timeseries_fig.pdf", plot = shark_temp_timeseries_fig, width = 170, height = 80, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+# Combine model results
+## Cowplot
+```{r fig.height = 45/25.4, fig.width = 170/25.4}
+shark_temp_model_fig <- cowplot::plot_grid(mod1_plot, mod2a_plot, mod3_plot, mod2b_plot, nrow = 1, labels = c('B', 'C', 'D', 'E'), rel_widths = c(1,1,1,1), label_size = 9, align = "h") +
+  theme(plot.background = element_rect(color = "black")) +
+  annotate("text", x = 0.08, y = 0.9, label = expression("R"^2*"=0.95"), hjust = 0, size = 2.5) +
+  annotate("text", x = 0.32, y = 0.9, label = expression("R"^2*"=0.92"), hjust = 0, size = 2.5) +
+  annotate("text", x = 0.57, y = 0.9, label = expression("R"^2*"=0.02"), hjust = 0, size = 2.5) +
+  annotate("text", x = 0.83, y = 0.9, label = expression("R"^2*"=0.83"), hjust = 0, size = 2.5)
+shark_temp_model_fig
+```
+
+
+## All together
+```{r fig.width = 170/25.4, fig.height = 130/25.4}
+shark_temp_model_fig_final <- 
+  cowplot::plot_grid(shark_temp_timeseries_fig, shark_temp_model_fig, nrow = 2, rel_heights = c(2,1.4)) +
+  theme(plot.background = element_rect(color = "black")) 
+  
+shark_temp_model_fig_final
+```
+
+
+## Save
+```{r}
+ggsave(filename = "output/shark_temp_model_fig_final.pdf", plot = shark_temp_model_fig_final, width = 170, height = 130, device = cairo_pdf, units = "mm", dpi = 300)
+ggsave(filename = "output/shark_temp_model_fig_final.jpg", plot = shark_temp_model_fig_final, width = 170, height = 130, device = "jpeg", units = "mm", dpi = 300)
+
+```
+
+
+
+
+
+

@@ -117,21 +117,24 @@ study_MM
 
 
 ## Plot study SST against AMM again but now with MM for study period in
-```{r  fig.width = 170/25.4, fig.height = 100/25.4}
+```{r  fig.width = 110/25.4, fig.height = 70/25.4}
 SSTvAMMplot <- 
 ggplot() +
-  geom_line(aes(x = date, y = SST), data = SST, colour = "grey60") +
+  geom_hline(yintercept = 28.69, colour = "grey60") +                # Plot the MMM
+  geom_line(aes(x = date, y = SST), data = SST, colour = "grey20") +
   geom_line(aes(x = Month, y = AMM), data = AMM_SST, colour = "dodgerblue") +
   geom_point(aes(x = Month, y = AMM), data = AMM_SST, fill = "dodgerblue", colour = "black",
              stroke = 0.8, pch = 22, alpha = 0.9, size = 2) +
   geom_line(aes(x = Month, y = MM), data = study_MM, colour = "firebrick") +
   geom_point(aes(x = Month, y = MM), data = study_MM, fill = "firebrick", colour = "black",
              stroke = 0.8, pch = 24, alpha = 0.9, size = 2) +
-  theme_bw() +
+  theme_minimal() +
   scale_x_date(date_breaks = "1 month", date_labels = '%b-%y', limits = c(as_date("2021-10-14"), as_date("2022-10-16"))) +
-  theme(axis.text.x = element_text(angle = 90,  vjust = 3, hjust = 0.3)) +
-  xlab("\nMonth/year") + 
-  ylab("Temp (°C)\n")
+  theme(axis.text.x = element_text(size = 9, angle = 45,  vjust = 1, hjust = 1)) +
+  theme(axis.text.y = element_text(size = 9)) +
+  theme(axis.title = element_text(size = 9)) +
+  xlab("Month/year") + 
+  ylab("SST (°C)")
 SSTvAMMplot
 ```
 
@@ -149,6 +152,19 @@ SST %>%
     filter(SST == min(SST))  
 ```
 
+```{r}
+study_MM %>% 
+  ungroup() %>% 
+  summarise_at(vars(MM),list(min = min, median=median, mean = mean, max = max))
+
+
+study_MM %>% 
+  ungroup() %>% 
+  summarise_at(vars(AMM),list(min = min, median=median, mean = mean, max = max))
+
+
+
+```
 
 
 ```{r}

@@ -171,6 +171,7 @@ shark_tp_data <-
   droplevels()
 ```
 
+
 ## Add in other variables of interest for use in models later
 - Hour of the day
 - Time of day (day vs night)
@@ -183,13 +184,11 @@ shark_tp_data <- shark_tp_data %>%
                          hour %in% (5:6) ~ "Dawn",
                          hour %in% (17:18) ~ "Dusk",
                          TRUE ~ "Night")) %>% 
-  mutate(Season = factor(case_when(
-    date >= date("2022-01-01") & date<= date("2022-03-31") ~ "Summer",
-    date >= date("2022-07-01") & date<= date("2022-09-30") ~ "Winter",
-    date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
-    date < date("2022-12-31")  ~ "Spring",
-    date > date("2022-09-30") ~ "Spring"))) %>% 
-  filter(date > date("2021-10-27")) %>% 
+  mutate(Month = as_factor(month(date, label = TRUE, abbr = TRUE)),
+         Season = factor(case_when(Month %in% c("Dec" , "Jan", "Feb") ~ "Summer",
+                                   Month  %in% c("Mar" , "Apr", "May") ~ "Autumn",
+                                   Month  %in% c("Jun", "Jul", "Aug") ~ "Winter",
+                                   Month  %in% c("Sep" , "Oct", "Nov") ~ "Spring"))) %>% 
   mutate(Sex = factor(case_when(grepl("f", Sex) ~ "Female",
                                 grepl("m", Sex) ~ "Male")))
 ```
@@ -251,7 +250,7 @@ teleost_press_data <-
 teleost_tp_data <- 
   teleost_temp_data %>% 
   full_join(teleost_press_data) %>% 
-  select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date_tagged, 
+  dplyr::select(transmitter_id, detection_timestamp, station_name, station_name_long, Scientific_name, Date_tagged, 
          Location_tagged, Site_tagged, Sex, FL, TL, Lat, Long, Temp, Depth) %>% 
   arrange(detection_timestamp) %>%   
   droplevels()
@@ -269,13 +268,12 @@ teleost_tp_data <- teleost_tp_data %>%
                          hour %in% (5:6) ~ "Dawn",
                          hour %in% (17:18) ~ "Dusk",
                          TRUE ~ "Night")) %>% 
-  mutate(Season = factor(case_when(
-    date >= date("2022-01-01") & date<= date("2022-03-31") ~ "Summer",
-    date >= date("2022-07-01") & date<= date("2022-09-30") ~ "Winter",
-    date < date("2022-07-01") & date > date("2022-03-31") ~ "Autumn",
-    date < date("2022-12-31")  ~ "Spring",
-    date > date("2022-09-30") ~ "Spring"))) %>% 
-  filter(date > date("2021-10-27"))
+  mutate(Month = as_factor(month(date, label = TRUE, abbr = TRUE)),
+         Season = factor(case_when(Month %in% c("Dec" , "Jan", "Feb") ~ "Summer",
+                                   Month  %in% c("Mar" , "Apr", "May") ~ "Autumn",
+                                   Month  %in% c("Jun", "Jul", "Aug") ~ "Winter",
+                                   Month  %in% c("Sep" , "Oct", "Nov") ~ "Spring")))
+
 ```
 
 # Checks

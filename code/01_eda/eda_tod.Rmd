@@ -66,7 +66,7 @@ shark_tp_data %>%
             min_temp = min(Temp),
             sd_temp = sd(Temp),
             se_temp = std.error(Temp))) %>% 
-  mutate(Season = factor(Season, levels = c("Spring", "Summer", "Autumn", "Winter")))
+  mutate(Season = factor(Season, levels = c("Summer", "Autumn", "Winter", "Spring")))
 ```
 
 # Mean depth use by hour ~ season

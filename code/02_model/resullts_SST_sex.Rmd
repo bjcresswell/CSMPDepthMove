@@ -29,7 +29,7 @@ knitr::opts_chunk$set(
 
 
 ```{r include=FALSE}
-rm(list=ls()) # Clear out environment if necessary
+#rm(list=ls()) # Clear out environment if necessary
 source("code/packages.R")
 ```
 
@@ -132,7 +132,7 @@ newdata_Sex_SST2 %>%
   scale_fill_manual(values = c("darkblue", "dodgerblue")) +
   scale_colour_manual(values = c("darkblue", "dodgerblue")) +
   theme_minimal() +
-  scale_y_continuous(limits = c(0, 110), breaks = c(0, 25, 50, 75, 100)) +
+  scale_y_continuous(limits = c(0, 140), breaks = c(0, 25, 50, 75, 100, 125)) +
 # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
   ylab("Daily depth movement (m)\n(e.m. mean ± 95%CI)") + 
   xlab("\nSST (°C)") +
@@ -146,7 +146,7 @@ newdata_Sex_SST2 %>%
 
 # Save
 ```{r}
-ggsave(Sex_SST_plot2, file = "output/Sex_SST_plot2.pdf", width = 115, height = 60, units = "mm", dpi = 300)
+ggsave(Sex_SST_plot2, file = "output/Sex_SST_plot3.pdf", width = 115, height = 60, units = "mm", dpi = 300)
 ```
 
 

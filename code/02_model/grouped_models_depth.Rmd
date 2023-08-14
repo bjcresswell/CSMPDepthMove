@@ -35,7 +35,8 @@ source("code/packages.R")
 
 # Load data
 ```{r}
-load(file = "data/Rdata/shark_daily_td.Rdata")
+# Using the shark grouped Rmd
+sourceRmd("code/01_eda/shark_daily_grouped.Rmd")
 shark_daily_td
 ```
 
@@ -45,13 +46,14 @@ shark_daily_td
 4. Max daily depth ~ SST
 5. Mean daily depth ~ SST
 6. Min daily depth ~ SST
+7.
 
+## Check distributions to get an idea of best error dist for models
 ```{r}
-## Check distributions so we know how to model
-shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_depth))
-shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_mean_depth))
-shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_min_depth))
-shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_depth_sd))
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_depth)) # Prob gaussian
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_mean_depth)) # Almost bi-model but will try gaussian
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_min_depth)) # Looks zero-inflated but will check later on in DHARMa - prob NB
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_depth_sd)) #
 ```
 
 All look approximately normal
@@ -70,12 +72,23 @@ mod4 <- glm(daily_max_depth ~ SST, data = shark_daily_td, family = gaussian)
 # Dharma resids
 mod4 %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
 mod4 %>% performance::check_outliers()
-mod4 %>% performance::r2()
+mod4g %>% performance::r2()
 ```
 
 ## Results
 ```{r}
+# broom::tidy
 (mod4results <- mod4 %>% tidy(conf.int=TRUE))
+
+# Manually
+mod4 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(28, 27)))) %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
 ```
 
 ## Plot results
@@ -103,7 +116,7 @@ mod4_plot <-
 
 mod4_plot
 
-ggsave(mod4_plot, file = "output/mod4_plot.pdf", width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+#ggsave(mod4_plot, file = "output/mod4_plot.pdf", width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
 ```
 
 
@@ -114,12 +127,12 @@ ggsave(mod4_plot, file = "output/mod4_plot.pdf", width = 56, height = 56, device
 #ggsave(daily_max_depth_model_plot, file = "output/daily_max_depth_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
 ```
 
+
 ##### Model 5: Daily Mean Depth ~ SST #####
 
-
-## Model formula
+## Model formula - gaussian best fit
 ```{r}
-mod5 <- glm(daily_mean_depth ~ SST, data = shark_daily_td, family = gaussian)
+mod5 <- glm(daily_mean_depth ~ SST, data = shark_daily_td, family = Gamma)
 ```
 
 ## Model validation
@@ -132,7 +145,17 @@ mod5 %>% performance::r2()
 
 ## Results
 ```{r}
-(mod5results <- mod5 %>% tidy(conf.int=TRUE))
+# broom::tidy
+(mod5results <- mod5 %>% tidy(conf.int=TRUE, exponentiate = TRUE))
+
+# Manually
+mod5 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30, 29, 28, 27, 26))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
 ```
 
 ## Plot results
@@ -141,12 +164,12 @@ mod5.grid <- shark_daily_td %>%
   with(list(SST = seq_range(SST, n = 100)))
 
 newdata5 <- mod5 %>% 
-  emmeans(~SST, at = mod5.grid) %>% 
-  regrid() %>% 
+  emmeans(~SST, at = mod5.grid, type = "response") %>% 
+  #regrid(transform = TRUE, ) %>% 
   as_tibble()
 
 mod5_plot <- 
-  ggplot(newdata5, aes(y = emmean, x = SST)) +
+  ggplot(newdata5, aes(y = response, x = SST)) +
   geom_point(data=shark_daily_td,  aes(y=daily_mean_depth, x = SST), fill = "dodgerblue", col = "black", alpha = 0.6, pch = 21) +
   geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), fill = "dodgerblue", alpha=0.6) +
   geom_line(colour = "black") +
@@ -160,12 +183,12 @@ mod5_plot <-
 
 mod5_plot
 
-ggsave(mod5_plot, file = "output/mod5_plot.pdf", device = cairo_pdf, width = 56, height = 56, units = "mm", dpi = 300)
+#ggsave(mod5_plot, file = "output/mod5_plot.pdf", device = cairo_pdf, width = 56, height = 56, units = "mm", dpi = 300)
 ```
 
 
 
-## Add in time-series data
+## Add to time-series data if required
 ```{r  fig.width = 180/25.4, fig.height = 60/25.4}
 #(daily_mean_depth_model_plot <- ggarrange(shark, mod5_plot, ncol = 2, widths = c(2,1)))
 #ggsave(daily_mean_depth_model_plot, file = "output/daily_mean_depth_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
@@ -174,7 +197,6 @@ ggsave(mod5_plot, file = "output/mod5_plot.pdf", device = cairo_pdf, width = 56,
 
 
 ##### Model 6: Daily Min Depth ~ SST #####
-
 
 ## Model formula
 ```{r}
@@ -186,6 +208,7 @@ mod6 <- glm(daily_min_depth ~ SST, data = shark_daily_td, family = negative.bino
 # Dharma resids
 mod6 %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
 mod6 %>% performance::check_outliers()
+mod6 %>% testZeroInflation
 mod6 %>% performance::r2()
 ```
 
@@ -243,7 +266,7 @@ Need a GAM
 ```{r}
 mod7 <- gam(daily_depth_sd ~ s(SST, bs = "cs"), data = shark_daily_td, method = "REML")
 mod7tw <- gam(daily_depth_sd ~ s(SST, bs = "cs"), data = shark_daily_td, family = tw, method = "REML")
-AIC(mod7, mod7tw)
+AICc(mod7, mod7tw)
 mod7 <- mod7tw
 ```
 
@@ -273,7 +296,7 @@ newdata7 <- mod7 %>%
   as_tibble()
 
 mod7_plot <- 
-    ggplot(newdata7, aes(y = emmean, x = SST)) +
+    ggplot(newdata7, aes(y = response, x = SST)) +
     geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
     geom_line() +
     geom_point(data=shark_daily_td,  aes(y=daily_depth_sd, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
@@ -289,9 +312,31 @@ mod7_plot <-
 mod7_plot
 
 ggsave(mod7_plot, file = "output/mod7_plot.pdf", width = 62, height = 62, device = cairo_pdf, units = "mm", dpi = 300)
-?mgcv
-citation("mgcv")
 ```
+
+# Planned contrast 26 - 30 ° C
+```{r}
+mod7.grid <- shark_daily_td %>% 
+  with(list(SST = seq_range(SST, n = 100)))
+
+mod7 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30, 26))), type = "response") %>% 
+  regrid() %>% 
+  #pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+```
+
+
+```{r}
+7.579993 - 9.086874
+8.333433	- 1.506881
+```
+
+
+
 
 
 ```{r}

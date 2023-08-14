@@ -1,5 +1,5 @@
 ---
-title: "Graphics"
+title: "Figure production - effect of SST on depth use"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -47,18 +47,18 @@ shark_daily_td %>%
   geom_line(aes(x = date, y = daily_min_depth), colour = "grey50") +
   #geom_smooth(aes(x = date, y = daily_min_depth), colour = "blue",  method = "gam", formula = y ~ s(x, bs = 'cs')) + # method = "gam" implements mgcv
   geom_line(aes(x = date, y = daily_mean_depth), colour = "dodgerblue") +
-  geom_smooth(aes(x = date, y = daily_mean_depth), colour = "dodgerblue",  method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_smooth(aes(x = date, y = daily_mean_depth), colour = "dodgerblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
   geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
   geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
   #geom_smooth(aes(x = date, y = daily_max_depth), colour = "red") + # Basic smooth, rather than gam
   theme_minimal() +
   scale_y_reverse() +
-  scale_x_date(date_breaks = "1 months", date_labels = '%b') +
-  theme(axis.text.x = element_text(angle = 0)) +
-  #theme(axis.text.x = element_blank()) +
+  scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
+  theme(axis.text = element_text(size = 9, colour = "black")) +
+  theme(axis.title = element_text(size = 9, colour = "black")) +
   #theme(axis.title.x = element_blank()) +
   #theme(axis.ticks.x = element_blank()) +
-  xlab("\nMonth of year (2021 - 2022)") +
+  xlab("Month of year (2021 - 2022)") +
   ylab("Depth (m below sea level)")
 
 shark_daily_depth_plot
@@ -69,10 +69,11 @@ SST_plot_plain <-
   shark_daily_td %>% 
   ggplot() +
   geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.5) +
-  scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
+  scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
   ylab("SST (°C)") +
   theme_minimal() +
-  theme(axis.title.y = element_text(size = 9, hjust = 0.1),
+  theme(axis.title.y = element_text(size = 9, hjust = 0.1, colour = "black"),
+        axis.text.y = element_text(size = 9, colour = "black"),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         axis.ticks.x = element_blank())
@@ -82,8 +83,9 @@ SST_plot_plain <-
 SST_plot_plain
 ```
 
-```{r fig.width = 170/25.4, fig.height = 100/25.4}
-shark_dep_timeseries_fig <- cowplot::plot_grid(SST_plot_plain, shark_daily_depth_plot, nrow = 2, labels = c('A'), label_size = 9, rel_heights = c(0.5, 1.5), align = "v") +
+```{r fig.width = 170/25.4, fig.height = 80/25.4}
+shark_dep_timeseries_fig <- cowplot::plot_grid(SST_plot_plain, shark_daily_depth_plot, nrow = 2, labels = c('A'), label_size = 9, label_y = 1,
+                                               rel_heights = c(0.6, 1.5), align = "v") +
     theme(plot.background = element_rect(color = "black")) 
 
 shark_dep_timeseries_fig
@@ -97,26 +99,32 @@ ggsave(filename = "output/shark_dep_timeseries_fig.pdf", plot = shark_dep_timese
 
 # Model results
 ## Cowplot
-```{r fig.height = 56/25.4, fig.width = 168/25.4}
-shark_dep_model_fig <- cowplot::plot_grid(mod4_plot, mod5_plot, mod6_plot, nrow = 1, labels = c('B', 'C', 'D'), label_size = 9, align = "h") +
+```{r fig.height = 56/25.4, fig.width = 170/25.4}
+shark_dep_model_fig <- cowplot::plot_grid(mod4_plot, mod5_plot, mod6_plot, mod7_plot, nrow = 1, labels = c('B', 'C', 'D', 'E'), rel_widths = c(1,1,1,1.25), label_size = 9, align = "h") +
   theme(plot.background = element_rect(color = "black")) +
-  annotate("text", x = 0.09, y = 0.9, label = expression("R"^2*"=0.47"), hjust = 0, size = 3) +
-  annotate("text", x = 0.41, y = 0.9, label = expression("R"^2*"=0.64"), hjust = 0, size = 3) +
-  annotate("text", x = 0.73, y = 0.9, label = expression("R"^2*"=0.001"), hjust = 0, size = 3)
+  annotate("text", x = 0.08, y = 0.9, label = expression("R"^2*"=0.47"), hjust = 0, size = 3) +
+  annotate("text", x = 0.31, y = 0.9, label = expression("R"^2*"=0.71"), hjust = 0, size = 3) +
+  annotate("text", x = 0.54, y = 0.9, label = expression("R"^2*"=0.001"), hjust = 0, size = 3) +
+  annotate("text", x = 0.78, y = 0.9, label = expression("R"^2*"=0.75"), hjust = 0, size = 3)
 shark_dep_model_fig
 ```
 
-## Patchwork
-```{r fig.height = 56/25.4, fig.width = 168/25.4}
-shark_dep_model_fig <- mod4_plot + mod5_plot + mod6_plot + plot_layout(ncol = 3, nrow = 1) +
-    theme(plot.background = element_rect(color = "black")) 
-shark_dep_model_fig
+
+## All together
+```{r fig.width = 170/25.4, fig.height = 130/25.4}
+shark_dep_model_fig_final <- 
+  cowplot::plot_grid(shark_dep_timeseries_fig, shark_dep_model_fig, nrow = 2, rel_heights = c(2,1.4)) +
+  theme(plot.background = element_rect(color = "black")) 
+  
+shark_dep_model_fig_final
 ```
 
 
 ## Save
 ```{r}
-ggsave(filename = "output/shark_dep_model_fig.pdf", plot = shark_dep_model_fig, width = 170, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+ggsave(filename = "output/shark_dep_model_fig_final.pdf", plot = shark_dep_model_fig_final, width = 170, height = 130, device = cairo_pdf, units = "mm", dpi = 300)
+ggsave(filename = "output/shark_dep_model_fig_final.jpg", plot = shark_dep_model_fig_final, width = 170, height = 130, device = "jpeg", units = "mm", dpi = 300)
+
 ```
 
 

@@ -21,14 +21,15 @@ editor_options:
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-source("../packages.R")
+source("code/packages.R")
 library(gratia)
 #rm(list=ls()) # Clear out environment if necessary
+getwd()
 ```
 
 
 ```{r}
-load("../../data/RData/SST.Rdata")
+load("data/RData/SST.Rdata")
 ```
 
 ```{r}

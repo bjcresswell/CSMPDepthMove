@@ -1,5 +1,5 @@
 ---
-title: "Individual movement results - SST * Sex"
+title: "Individual movement results - Sex * Size"
 author: "Ben Cresswell"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
@@ -47,15 +47,50 @@ load(file = "data/Rdata/final_model.Rdata")
 ```
 
 
+
+#  Mean TL 
 ```{r}
-sst_maxd_final %>% emtrends("Sex", var = "TL") %>% regrid()# %>% contrast()
+shark_individual_daily_td %>% 
+  ungroup() %>% 
+  group_by(Sex) %>% 
+  summarise_at(vars(TL),
+               list(min=min, 
+                    mean = mean,
+                    max=max))
+```
+
+# Overall trends:
+```{r}
+sst_maxd_final %>% 
+  summary()
+
+sex_trends <- sst_maxd_final %>% 
+  emtrends(specs = pairwise~"Sex", var = "TL")
+
+sex_trendsum <- summary(sex_trends, infer = TRUE)
+
+sex_trendsum
+```
+Females respond with greater use of depth with increased body size
+Males no response either way (probably due to small sample size)
+
+# 1. Using intervals based on body size range in cohort
+
+## Find what the range is
+```{r}
+shark_individual_daily_td %>% 
+  dplyr::select(Sex, TL) %>% 
+  unique() %>% 
+  group_by(Sex) %>% 
+  summarise(TL_max = max(TL),
+            TL_min = min(TL))
 ```
 
 
 ```{r  fig.width = 160/25.4, fig.height = 100/25.4}
 Sex_TL_grid <- shark_individual_daily_td %>% 
     with(list(Sex = levels(Sex),
-              TL = c(130, 150, 170)))
+              TL = c(125, 150, 175)))
   
 newdata_Sex_TL <- sst_maxd_final %>% 
   emmeans(~TL|Sex, at = Sex_TL_grid) %>% 
@@ -63,6 +98,8 @@ newdata_Sex_TL <- sst_maxd_final %>%
   as_tibble() %>% 
   mutate(TL = factor(TL),
          Sex_TL = factor(paste(Sex, TL)))
+
+sst_maxd_final
 ```
 
 
@@ -70,12 +107,12 @@ newdata_Sex_TL <- sst_maxd_final %>%
 (sex_TL_plot <- 
 newdata_Sex_TL %>% 
   ggplot() +
-  geom_linerange(aes(x = TL, y = response, ymin=asymp.LCL, ymax=asymp.UCL, colour = Sex, fill = Sex), colour = "grey40", position=position_dodge(0.5)) +
+  geom_linerange(aes(x = TL, y = response, ymin=asymp.LCL, ymax=asymp.UCL, group = Sex), colour = "grey40", position=position_dodge(0.5)) +
   geom_point(aes(x = TL, y = response, colour = Sex, fill = Sex, shape = Sex), colour = "grey20", position=position_dodge(0.5), size = 4) +
   scale_shape_manual(values = c(21,22)) +
   scale_fill_manual(values = c("darkblue", "dodgerblue")) +
   theme_minimal() +
-  scale_y_continuous(limits = c(0, 110), breaks = c(0, 25, 50, 75, 100)) +
+  scale_y_continuous(limits = c(0, 140), breaks = c(0, 25, 50, 75, 100, 125)) +
   #theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
   #ylab("Daily depth movement (m)\n(e.m. mean ± 95%CI)") + 
   xlab("\nTotal length (cm)") +
@@ -98,15 +135,75 @@ ggsave(sex_TL_plot, file = "output/Sex_TL_plot.pdf", width = 65, height = 50, un
 
 # Combine with the Sex*SST plot
 ```{r  fig.width = 170/25.4, fig.height = 70/25.4}
-SST_sex_TL_plot <- ggarrange(Sex_SST_plot2, sex_TL_plot, nrow = 1, label.y = 0.5, widths = c(1.1, 0.6))
+SST_sex_TL_fig <- cowplot::plot_grid(Sex_SST_plot2, sex_TL_plot, nrow = 1, labels = c('A', 'B'), label_size = 9, align = "h", rel_widths = c(1.1, 0.6)) +
+  theme(plot.background = element_rect(color = "black"))
 
-SST_sex_TL_plot
+SST_sex_TL_fig
 ```
 
 
 # Save
 ```{r}
-ggsave(SST_sex_TL_plot, file = "output/SST_sex_TL_plot.pdf", width = 170, height = 70, units = "mm", dpi = 300)
+ggsave(SST_sex_TL_fig, file = "output/SST_sex_TL_fig.pdf", width = 170, height = 70, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+
+
+
+# 2. Plot with body size as continuous on X axis
+
+```{r  fig.width = 160/25.4, fig.height = 100/25.4}
+Sex_TL_grid <- shark_individual_daily_td %>% 
+    with(list(Sex = levels(Sex),
+              TL = seq_range(TL, n = 100)))
+```
+
+
+```{r  fig.width = 160/25.4, fig.height = 100/25.4}
+newdata_Sex_TL <- sst_maxd_final %>% 
+  emmeans(~TL|Sex, at = Sex_TL_grid) %>% 
+  regrid() %>% 
+  as_tibble() 
+```
+
+
+```{r  fig.width = 100/25.4, fig.height = 100/25.4}
+#sex_TL_plot_cont <- 
+newdata_Sex_TL %>% 
+  ggplot() +
+  geom_point(data = shark_individual_daily_td, aes(x = TL, y = daily_mean_depth, fill = Sex, colour = Sex), alpha = 0.05, position = position_jitter(width = 3)) +
+  geom_line(aes(x = TL, y = response, colour = Sex, group = Sex), size = 1) +
+  geom_ribbon(aes(x = TL, y = response, ymin=asymp.LCL, ymax=asymp.UCL, fill = Sex, group = Sex), alpha = 0.4) +
+  scale_fill_manual(values = c("darkblue", "dodgerblue")) +
+  scale_colour_manual(values = c("darkblue", "dodgerblue")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 130), breaks = c(0, 25, 50, 75, 100, 125)) +
+  #theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  ylab("Daily depth movement (m)\n(e.m. mean ± 95%CI)") + 
+  xlab("\nTotal length (cm)") +
+  theme(legend.position='none',
+        legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title.x = element_text(size = 8),
+        axis.text.x = element_text(size = 8),
+        axis.title.y = element_text(size = 8),
+        axis.text.y = element_text(size = 8),
+        legend.title = element_text(size = 8))
+
+sex_TL_plot_cont
+```
+
+# Combine with the Sex*SST plot
+```{r  fig.width = 170/25.4, fig.height = 70/25.4}
+SST_sex_TL_fig <- cowplot::plot_grid(Sex_SST_plot2, sex_TL_plot_cont, nrow = 1, labels = c('A', 'B'), label_size = 9, align = "h", rel_widths = c(1,1)) +
+  theme(plot.background = element_rect(color = "black"))
+
+SST_sex_TL_fig
+```
+
+# Save
+```{r}
+ggsave(SST_sex_TL_fig, file = "output/SST_sex_TL_fig2.pdf", width = 170, height = 70, device = cairo_pdf, units = "mm", dpi = 300)
 ```
 
 

@@ -195,6 +195,8 @@ However, note the warning about interactions:
 sst_maxd_final %>% ggemmeans(~ SST * Sex) %>% plot
 sst_maxd_final %>% ggemmeans(~ SST * TL) %>% plot
 sst_maxd_final %>% ggemmeans(~ TL * SST) %>% plot
+sst_maxd_final %>% ggemmeans(~ TL * Sex) %>% plot
+
 ```
 
 

@@ -42,26 +42,23 @@ shark_daily_td
 
 # We need models for 
 
-1. Max daily temp ~ SST
-2. Mean daily temp ~ SST
-3. Min daily temp ~ SST
-4. Max daily depth ~ SST
+1. Max daily temp ~ SST    - Gaussian
+2. Mean daily temp ~ SST   - Gaussian
+3. Min daily temp ~ SST    - 
+4. Daily temp SD ~ SST
 
 ```{r}
 ## Check distributions so we know how to model
-## Max depth
 shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_temp))
-## Mean depth
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_mean_temp))
 shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_min_temp))
-## Min depth
-shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_depth))
 ```
 
 All look approximately normal
 
 ##### Model 1: Daily max temp ~ SST #####
 
-## Model formula
+## Model formula - gaussian best fit and AIC score
 ```{r}
 mod1 <- glm(daily_max_temp ~ SST, data = shark_daily_td, family = gaussian)
 ```
@@ -99,14 +96,15 @@ mod1_plot <-
   geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
   geom_line(colour = "black") +
  # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
-  ylab("Daily max temp (°C)") + 
+  #ylab("Daily max temp (°C)") + 
+  ylab(expression(paste("Daily max", italic("T"),""[b]* " (°C)"))) + 
   xlab("SST (°C)") +
   scale_y_continuous(limits = c(25.4, 30.9), n.breaks = 6) +
   scale_x_continuous(limits = c(25.4, 30.9), n.breaks = 6) +
   theme_minimal() +
   theme(#plot.background = element_rect(colour = "black", linewidth = 1),
-        axis.title.y = element_text(size = 9),
-        axis.title.x = element_text(size = 9))
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
 
 mod1_plot
 
@@ -115,14 +113,14 @@ ggsave(mod1_plot, file = "output/mod1_plot.pdf", width = 56, height = 56, device
 
 ## Add in time-series data
 ```{r  fig.width = 180/25.4, fig.height = 60/25.4}
-(daily_max_temp_model_plot <- ggarrange(shark_daily_maxtemp_plot, mod1_plot, ncol = 2, widths = c(2,1)))
-ggsave(daily_max_temp_model_plot, file = "output/daily_max_temp_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
+#(daily_max_temp_model_plot <- ggarrange(shark_daily_maxtemp_plot, mod1_plot, ncol = 2, widths = c(2,1)))
+#ggsave(daily_max_temp_model_plot, file = "output/daily_max_temp_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
 ```
 
 
 ##### Model 2a: Mean daily temp ~ SST #####
 
-## Model formula
+## Model formula - again gaussian best fit
 ```{r}
 mod2a <- glm(daily_mean_temp ~ SST, data = shark_daily_td, family = gaussian)
 ```
@@ -134,11 +132,7 @@ mod2a %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile devi
 mod2a %>% performance::check_outliers()
 mod2a %>% performance::r2()
 ```
-
-
-
 All look approximately normal
-
 
 ## Results
 ```{r}
@@ -161,38 +155,44 @@ mod2a_plot <-
   geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
   geom_line() +
   # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
-  ylab("Daily mean temp (°C)") + 
+  #ylab("Daily mean temp (°C)") + 
+  ylab(expression(paste("Daily mean", italic("T"),""[b]* " (°C)"))) + 
   xlab("SST (°C)") +
   scale_y_continuous(limits = c(25.4, 30.9), n.breaks = 6) +
   scale_x_continuous(limits = c(25.4, 30.9), n.breaks = 6) +
   theme_minimal() +
   theme(#plot.background = element_rect(colour = "black", linewidth = 1),
-        axis.title.y = element_text(size = 9),
-        axis.title.x = element_text(size = 9))
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
 
 mod2a_plot
 
 ggsave(mod2a_plot, file = "output/mod2a_plot.pdf", width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
 ```
 
-## Add in time-series data
+## Add to time-series data if required
 ```{r  fig.width = 180/25.4, fig.height = 60/25.4}
-(daily_mean_temp_model_plot <- ggarrange(shark_daily_meantemp_plot, mod2a_plot, ncol = 2, widths = c(2,1)))
-ggsave(daily_mean_temp_model_plot, file = "output/daily_mean_temp_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
-
+#(daily_mean_temp_model_plot <- ggarrange(shark_daily_meantemp_plot, mod2a_plot, ncol = 2, widths = c(2,1)))
+#ggsave(daily_mean_temp_model_plot, file = "output/daily_mean_temp_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
 ```
-
 
 
 
 ##### Model 2b: Mean daily temp SD ~ SST #####
 
 ## Model formula
-Need a GAM
-
+We know from EDA that we'll need a GAM for this. But what error family?
 
 ```{r}
-mod2b <- gam(daily_temp_sd ~ s(SST, bs = "cs"), data = shark_daily_td)
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_temp_sd))
+```
+Looks right skewed. Maybe bimodal?
+
+```{r}
+mod2bnorm <- gam(daily_temp_sd ~ s(SST, bs = "cs"), data = shark_daily_td, method = "REML")
+mod2btw <- gam(daily_temp_sd ~ s(SST, bs = "cs"), data = shark_daily_td, family = tw, method = "REML")
+AIC(mod2bnorm, mod2btw)
+mod2b <- mod2btw
 ```
 
 ## Model validation
@@ -200,12 +200,15 @@ mod2b <- gam(daily_temp_sd ~ s(SST, bs = "cs"), data = shark_daily_td)
 # Dharma resids
 mod2b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
 mod2b %>% performance::check_outliers()
+mod2b %>% gam.check()
 mod2b %>% performance::r2()
 ```
 
 ## Results
 ```{r}
 (mod2bresults <- mod2b %>% tidy(conf.int=TRUE))
+mod2b %>% summary()
+mod2bnorm %>% summary()
 ```
 
 ## Plot results
@@ -219,75 +222,43 @@ newdata2b <- mod2b %>%
   as_tibble()
 
 mod2b_plot <- 
-    ggplot(newdata2b, aes(y = emmean, x = SST)) +
+    ggplot(newdata2b, aes(y = response, x = SST)) +
     geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
     geom_line() +
     geom_point(data=shark_daily_td,  aes(y=daily_temp_sd, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
     # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
-    ylab("Std. dev. daily temp (°C)") + 
+   # ylab("Std. dev. daily temp (°C)") + 
+    ylab(expression(paste("S.D. daily mean", italic("T"),""[b]* " (°C)"))) + 
     xlab("SST (°C)") +
     theme_minimal() +
     theme(#plot.background = element_rect(colour = "black", linewidth = 1),
-        axis.title.y = element_text(size = 9),
-        axis.title.x = element_text(size = 9))
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
 
 
 mod2b_plot
 
 ggsave(mod2b_plot, file = "output/mod2b_plot.pdf", width = 62, height = 62, device = cairo_pdf, units = "mm", dpi = 300)
 ```
-
-
-
-##### Model 2b: Delta between Mean and Max daily temps ~ SST #####
-### NOT GOING TO USE THIS - SD SHOULD BE SUFFICIENT
-## Model formula
-Need a GAM
-
+# Temp GAM results - planned contrasts 
 ```{r}
-mod2c <- gam(temp_diff ~ s(SST, bs = "cs"), data = shark_daily_td)
-```
-
-## Model validation
-```{r}
-# Dharma resids
-mod2c %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
-mod2c %>% performance::check_outliers()
-mod2c %>% performance::r2()
-```
-
-## Results
-```{r}
-(mod2cresults <- mod2c %>% tidy(conf.int=TRUE))
-```
-
-## Plot results
-```{r fig.height = 56/25.4, fig.width = 56/25.4}
-mod2c.grid <- shark_daily_td %>% 
+mod2b.grid <- shark_daily_td %>% 
   with(list(SST = seq_range(SST, n = 100)))
 
-newdata2c <- mod2c %>% 
-  emmeans(~SST, at = mod2c.grid) %>% 
+mod2b %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30, 26))), type = "response") %>% 
   regrid() %>% 
+  #pairs() %>% 
+  confint() %>% 
   as_tibble()
 
-(mod2c_plot <- 
-    ggplot(newdata2, aes(y = emmean, x = SST)) +
-    geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
-    geom_line() +
-    geom_point(data=shark_daily_td,  aes(y=temp_diff, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
-    theme_minimal() +
-    # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
-    ylab("Diff between mean and\nmax daily temps (°C)") + 
-    xlab("\nSST (°C)"))
-ggsave(mod2c_plot, file = "output/mod2c_plot.pdf", width = 100, height = 100, units = "mm", dpi = 300)
 ```
-
 
 
 ##### Model 3: Min Daily Temp ~ SST #####
 
-## Model formula
+## Model formula - gaussian best fit
 ```{r}
 mod3 <- glm(daily_min_temp ~ SST, data = shark_daily_td, family = gaussian)
 ```
@@ -304,6 +275,7 @@ mod3 %>% performance::r2()
 ## Results
 ```{r}
 (mod3results <- mod3 %>% tidy(conf.int=TRUE))
+mod3 %>% summary()
 ```
 
 ## Plot results
@@ -323,14 +295,15 @@ mod3_plot <-
   geom_line() +
   theme_minimal() +
  # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
-  ylab("Daily min temp (°C)") + 
+ # ylab("Daily min temp (°C)") + 
+  ylab(expression(paste("Daily min", italic("T"),""[b]* " (°C)"))) + 
   xlab("SST (°C)") +
   #scale_y_continuous(limits = c(25, 30.5), n.breaks = 6) +
   #scale_x_continuous(limits = c(25, 30.5), n.breaks = 6) +
   theme_minimal() +
   theme(#plot.background = element_rect(colour = "black", linewidth = 1),
-        axis.title.y = element_text(size = 9),
-        axis.title.x = element_text(size = 9))
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
 
 mod3_plot
 

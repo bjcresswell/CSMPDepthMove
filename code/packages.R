@@ -15,6 +15,8 @@ library(ocedata)
 
 # Plotting
 library(patchwork)
+library(magick)
+library(cowplot)
 library(sjPlot)
 library(ggpubr)
 
