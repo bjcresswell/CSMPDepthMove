@@ -72,7 +72,7 @@ mod4 <- glm(daily_max_depth ~ SST, data = shark_daily_td, family = gaussian)
 # Dharma resids
 mod4 %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
 mod4 %>% performance::check_outliers()
-mod4g %>% performance::r2()
+mod4 %>% performance::r2()
 ```
 
 ## Results
@@ -198,7 +198,7 @@ mod5_plot
 
 ##### Model 6: Daily Min Depth ~ SST #####
 
-## Model formula
+## Model formula - negbinom
 ```{r}
 mod6 <- glm(daily_min_depth ~ SST, data = shark_daily_td, family = negative.binomial(2)) # nb capacity comes from MASS package
 ```

@@ -41,28 +41,18 @@ shark_daily_td
 
 ## Daily temps (all) vs SST
 ```{r fig.width = 170/25.4, fig.height = 70/25.4}
-#shark_daily_temps_plot <- 
-  shark_daily_td %>% 
-  ggplot() +
-  geom_line(aes(x = date, y = SST), colour = "grey15", lwd = 0.6, lty = 3313) +
-  geom_line(aes(x = date, y = daily_max_temp), colour = "red") +
-  geom_smooth(aes(x = date, y = daily_max_temp), colour = "red", method = "gam",  formula = y ~ s(x, bs = 'cs'), level = 0.95) +
-  geom_line(aes(x = date, y = daily_min_temp), colour = "midnightblue") +
-  geom_smooth(aes(x = date, y = daily_min_temp), colour = "midnightblue", method = "gam",  formula = y ~ s(x, bs = 'cs'), level = 0.95) +
-  geom_line(aes(x = date, y = daily_mean_temp), colour = "grey40") +
-  geom_smooth(aes(x = date, y = daily_mean_temp), colour = "grey40", method = "gam",  formula = y ~ s(x, bs = 'cs'), level = 0.95) +
-  scale_x_date(date_breaks = "1 months", date_labels = '%b') +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 0)) +
-  xlab("\nMonth of year (2021 - 2022)") +
-  ylab("Temp (°C)")
-
+shark_daily_temps_plot 
 ```
 
-We need to formally model these trends with purpose-build GAMs and identify peaks/troughs 
+# We need to formally model these trends with purpose-built GAMs
 
+Notes:
+- Likely going to use the same error distributions as the grouped glms but will check first
+- Setting basis dimension (k), per months of the year - the sort of scale of trend we are interested in
+- As we have a "cyclical" predictor variable (i.e. date) we'll need to insert a dummy variable (study_day) and then recode back after model
+- For the same reason we'll set knots to "bridge" the gap between 31 Dec and 1 Jan and provide unique estimates at those points (not that important but doing it anyway)
 
-# The date variable won't play nicely with GAM (or other way around) so need to make a new variable called study_day and use cubic spline
+# Dummy code study day to the main tbl
 ```{r}
 shark_daily_td <- 
   shark_daily_td %>% 
@@ -79,7 +69,7 @@ shark_daily_td <-
 
 # Fit model
 ```{r}
-mintemp_timeGAM <- gam(daily_min_temp ~ s(study_day, bs = 'cc'), data = shark_daily_td, knots = list(doy = c(0.5, 365.5)))
+mintemp_timeGAM <- gam(daily_min_temp ~ s(study_day, bs = 'cc', k = 12), data = shark_daily_td, knots = list(doy = c(0.5, 365.5)))
 ```
 
 # Validation
@@ -90,15 +80,18 @@ gam.check(mintemp_timeGAM)
 
 ## Results
 ```{r}
-#(gamresults <- mintemp_timeGAM %>% tidy(conf.int=TRUE))
+#mintemp_timeGAM %>% tidy(conf.int=TRUE))
 mintemp_timeGAM %>% summary()
 ```
 
-
+# Make grid to use for all depth models
 ```{r fig.height = 56/25.4, fig.width = 56/25.4}
 gam_grid <- shark_daily_td %>% 
   with(list(study_day = seq_range(study_day, n = 365)))
+```
 
+# New date for min Tb
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
 mintempgam_newdata <- mintemp_timeGAM %>% 
   emmeans(~study_day, at = gam_grid) %>% 
   regrid() %>% 
@@ -109,11 +102,11 @@ mintempgam_newdata <- mintemp_timeGAM %>%
 
 # Figure for depth variation by time of day
 ```{r fig.width = 170/25.4, fig.height = 52/25.4}
-time_temp_gam_plot <- 
+#time_temp_gam_plot <- 
     ggplot() +
-    geom_point(data = shark_daily_td, aes(x = study_day, y = daily_min_temp), pch = 21, alpha = 0.5) +
-    geom_ribbon(data = mintempgam_newdata, aes(y = emmean, x = study_day, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
-    geom_line(data = mintempgam_newdata, aes(y = emmean, x = study_day)) +
+    geom_line(data = shark_daily_td, aes(x = date, y = daily_min_temp)) +
+    geom_ribbon(data = mintempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
+    geom_line(data = mintempgam_newdata, aes(y = emmean, x = date)) +
     ylab("Temp (°C)") + 
     xlab("Day of year") +
    # scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
@@ -122,9 +115,6 @@ time_temp_gam_plot <-
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
         legend.position = "none") 
-
-time_temp_gam_plot
-
 ```
 
 
@@ -276,19 +266,19 @@ shark_daily_temps_plot <-
   geom_ribbon(data = maxtempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "red", colour = "NA") +
   geom_line(data = maxtempgam_newdata, aes(y = emmean, x = date), colour = "red") +
   geom_line(data = shark_daily_td, aes(x = date, y = daily_max_temp), colour = "red") +
-  geom_line(data = shark_daily_td, aes(x = date, y = daily_min_temp), colour = "midnightblue") +
   geom_ribbon(data = mintempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "midnightblue", colour = "NA") +
+  geom_line(data = shark_daily_td, aes(x = date, y = daily_min_temp), colour = "midnightblue") +
   geom_line(data = mintempgam_newdata, aes(y = emmean, x = date), colour = "midnightblue") +
-  geom_line(data = shark_daily_td, aes(x = date, y = daily_mean_temp), colour = "grey40") +
   geom_ribbon(data = meantempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "grey40", colour = "NA") +
+  geom_line(data = shark_daily_td, aes(x = date, y = daily_mean_temp), colour = "grey40") +
   geom_line(data = meantempgam_newdata, aes(y = emmean, x = date), colour = "grey40") +
-  #scale_x_continuous() +
+  scale_y_continuous(breaks = c(24,25,26,27,28,29,30,31)) +
   scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
   theme_minimal() +
   theme(axis.title = element_text(size = 9, colour = "black"),
         axis.text = element_text(size = 9, colour = "black")) +
   xlab("Month of year (2021 - 2022)") +
-  ylab("Temp (°C)")
+  ylab(expression(paste(italic("T"),""[b]* " (°C)")))
 
 shark_daily_temps_plot
 ```

@@ -1,0 +1,46 @@
+---
+title: "Figure production - effect of sex, size and SST on depth use"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 70/25.4
+    fig_width: 170/25.4
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	include = TRUE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+source("code/packages.R")
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+
+
+
+
+
+
+
+
+
+

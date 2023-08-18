@@ -212,6 +212,7 @@ shark_tp_data %$% summary(station_name_long) # No. of individuals detected - all
 # Save
 ```{r}
 save(shark_tp_data, file = "data/Rdata/shark_tp_data.Rdata")
+load(file = "data/Rdata/shark_tp_data.Rdata")
 ```
 
 

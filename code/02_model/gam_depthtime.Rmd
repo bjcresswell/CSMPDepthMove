@@ -39,16 +39,20 @@ shark_daily_td
 
 #  GRAPHICAL OVERVIEW #
 
-## Daily temps (all) vs SST
+## Daily depths (just the ggplot smooth)
 ```{r fig.width = 170/25.4, fig.height = 70/25.4}
-# PUT THE DEPTH OVERVIEW PLOT IN HERE
-
+shark_daily_depth_plot
 ```
 
-We need to formally model these trends with purpose-build GAMs and identify peaks/troughs 
+# We need to formally model these trends with purpose-built GAMs
 
+Notes:
+- Likely going to use the same error distributions as the grouped glms but will check first
+- Setting basis dimension (k), per months of the year - the sort of scale of trend we are interested in
+- As we have a "cyclical" predictor variable (i.e. date) we'll need to insert a dummy variable (study_day) and then recode back after model
+- For the same reason we'll set knots to "bridge" the gap between 31 Dec and 1 Jan and provide unique estimates at those points (not that important but doing it anyway)
 
-# The date variable won't play nicely with GAM (or other way around) so need to make a new variable called study_day and use cubic spline
+# Dummy code study day to the main tbl
 ```{r}
 shark_daily_td <- 
   shark_daily_td %>% 
@@ -58,14 +62,14 @@ shark_daily_td <-
 ```
 
 
+#### 1. Max depth ####
 
-# Apply GAMs
-
-#### 1. Minimum Tb ####
-
-# Fit model
+# Fit model - Gaussian
 ```{r}
-maxdepth_timeGAM <- gam(daily_max_depth ~ s(study_day, bs = 'cc', k = 15), data = shark_daily_td, knots = list(doy = c(0.5, 365.5)))
+maxdepth_timeGAM <- gam(daily_max_depth ~ s(study_day, bs = 'cc', k = 12), data = shark_daily_td, knots = list(study_day = c(0.5, 365.5)))
+#maxdepth_timeGAMg <- gam(daily_max_depth ~ s(study_day, bs = 'cc', k = 12), data = shark_daily_td, family = Gamma, knots = list(study_day = c(0.5, 365.5)))
+#maxdepth_timeGAMtw <- gam(daily_max_depth ~ s(study_day, bs = 'cc', k = 12), data = shark_daily_td, family = tw, knots = list(study_day = c(0.5, 365.5)))
+#AIC(maxdepth_timeGAM, maxdepth_timeGAMg, maxdepth_timeGAMtw)
 ```
 
 # Validation
@@ -76,7 +80,7 @@ gam.check(maxdepth_timeGAM)
 
 ## Results
 ```{r}
-#(gamresults <- mintemp_timeGAM %>% tidy(conf.int=TRUE))
+#maxdepth_timeGAM %>% tidy(conf.int=TRUE)) # Not that useful
 maxdepth_timeGAM %>% summary()
 ```
 
@@ -95,14 +99,12 @@ maxdepthgam_newdata <- maxdepth_timeGAM %>%
   mutate(date = as.Date(study_day, origin = "2021-10-30")) # Add back in date
 ```
 
-
-# Figure for depth variation by time of day
+# Check output figure
 ```{r fig.width = 170/25.4, fig.height = 52/25.4}
-max_depth_gam_plot <- 
     ggplot() +
-    geom_point(data = shark_daily_td, aes(x = study_day, y = daily_max_depth), pch = 21, alpha = 0.5) +
-    geom_ribbon(data = maxdepthgam_newdata, aes(y = emmean, x = study_day, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
-    geom_line(data = maxdepthgam_newdata, aes(y = emmean, x = study_day)) +
+    geom_line(data = shark_daily_td, aes(x = date, y = daily_max_depth)) +
+    geom_ribbon(data = maxdepthgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
+    geom_line(data = maxdepthgam_newdata, aes(y = emmean, x = date)) +
     ylab("Depth (m)") + 
     xlab("Day of year") +
     scale_y_reverse() +
@@ -111,122 +113,107 @@ max_depth_gam_plot <-
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
         legend.position = "none") 
-
-max_depth_gam_plot
-
 ```
 
 
-
-
+# Identify peaks and troughs in maximum depths used:
 ```{r}
 maxdepthgam_newdata %>% 
-  slice_max(emmean, n = 1) # Max daily min Tb 26.0°C
+  slice_max(emmean, n = 7) # Max daily max depths of ~ 130m around mid-December
 
 maxdepthgam_newdata %>% 
-  slice_min(emmean, n = 1) # Min daily min Tb 24.9
+  slice_min(emmean, n = 7) # Minimum daily max depths of ~ 70m in late-August
 ```
 
 
+#### 2. Mean depth ####
 
-
-
-## NEED TO CHANGE FROM HERE DOWN TO DEPTH ##
-
-
-
-
-
-
-
-
-
-
-
-#### 2. Mean Tb ####
-
-# Fit model
+# Fit model - Gamma
 ```{r}
-meantemp_timeGAM <- gam(daily_mean_temp ~ s(study_day, bs = 'cc'), data = shark_daily_td, knots = list(study_day = c(0.5, 365.5)))
+#meandepth_timeGAM <- gam(daily_mean_depth ~ s(study_day, bs = 'cc',  k = 12), data = shark_daily_td,  knots = list(study_day = c(0.5, 365.5)))
+#meandepth_timeGAMg <- gam(daily_mean_depth ~ s(study_day, bs = 'cc',  k = 12), data = shark_daily_td, family = Gamma, knots = list(study_day = c(0.5, 365.5)))
+#meandepth_timeGAMtw <- gam(daily_mean_depth ~ s(study_day, bs = 'cc',  k = 12), data = shark_daily_td, family = tw, knots = list(study_day = c(0.5, 365.5)))
+#AIC(meandepth_timeGAM, meandepth_timeGAMg, meandepth_timeGAMtw)
+meandepth_timeGAM <- gam(daily_mean_depth ~ s(study_day, bs = 'cc',  k = 12), data = shark_daily_td, family = Gamma, knots = list(study_day = c(0.5, 365.5)))
 ```
 
 # Valdation
 ```{r}
-simulateResiduals(meantemp_timeGAM) %>% plot()
-gam.check(meantemp_timeGAM)
+simulateResiduals(meandepth_timeGAM) %>% plot()
+gam.check(meandepth_timeGAM)
 ```
 
 
 ```{r}
 ## Results
-(gamresults <- meantemp_timeGAM %>% tidy(conf.int=TRUE))
-meantemp_timeGAM %>% summary()
+meandepth_timeGAM %>% tidy(conf.int=TRUE)
+meandepth_timeGAM %>% summary()
 ```
 
 
 ```{r fig.height = 56/25.4, fig.width = 56/25.4}
-meantempgam_newdata <- meantemp_timeGAM %>% 
+meandepthgam_newdata <- meandepth_timeGAM %>% 
   emmeans(~study_day, at = gam_grid) %>% 
   regrid() %>% 
   as_tibble() %>% 
   mutate(date = as.Date(study_day, origin = "2021-10-30"))
 ```
 
-
-
 # Figure for depth variation by time of day
 ```{r fig.width = 170/25.4, fig.height = 52/25.4}
-time_temp_gam_plot <- 
     ggplot() +
-    geom_point(data = shark_daily_td, aes(x = study_day, y = daily_mean_temp), pch = 21, alpha = 0.5) +
-    geom_ribbon(data = meantempgam_newdata, aes(y = emmean, x = study_day, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
-    geom_line(data = meantempgam_newdata, aes(y = emmean, x = study_day)) +
-    ylab("Temp (°C)") + 
+    geom_point(data = shark_daily_td, aes(x = study_day, y = daily_mean_depth), pch = 21, alpha = 0.5) +
+    geom_ribbon(data = meandepthgam_newdata, aes(y = response, x = study_day, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
+    geom_line(data = meandepthgam_newdata, aes(y = response, x = study_day)) +
+    ylab("Depth (m)") + 
     xlab("Day of year") +
    # scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
     theme_minimal() +
+    scale_y_reverse() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
         legend.position = "none") 
-
-time_temp_gam_plot
 ```
 
 
 
+# Identify peaks and troughs in maximum depths used:
 
 ```{r}
-meantempgam_newdata %>% 
-  slice_max(emmean, n = 10)# Max mean temperature 28.85°C is almost exactly the same as annual MMM (28.69°C)
-
+meandepthgam_newdata %>% 
+  slice_max(response, n = 7) # Deepest mean depths of ~30 m in mid-January
+meandepthgam_newdata %>% 
+  slice_min(response, n = 7) # Shallowest mean depths of ~15m in late-Sept
 ```
 
 
-#### 3. Max Tb ####
+#### 3. Minimum depth ####
 
-# Fit model
+# Fit model - negbinom
 ```{r}
-maxtemp_timeGAM <- gam(daily_max_temp ~ s(study_day, bs = 'cc'), data = shark_daily_td, knots = list(study_day = c(0.5, 365.5)))
+mindepth_timeGAM <- gam(daily_min_depth ~ s(study_day, bs = 'cc',  k = 12), data = shark_daily_td, family = negbin(1), knots = list(study_day = c(0.5, 365.5)))
+#mindepth_timeGAM2 <- gam(daily_min_depth ~ s(study_day, bs = 'cc',  k = 12), data = shark_daily_td, family = negbin(2), knots = list(study_day = c(0.5, 365.5)))
+#AIC(mindepth_timeGAM1, mindepth_timeGAM2)
 ```
 
 # Valdation
 ```{r}
-simulateResiduals(maxtemp_timeGAM) %>% plot()
-gam.check(maxtemp_timeGAM)
+simulateResiduals(mindepth_timeGAM) %>% plot()
+gam.check(mindepth_timeGAM)
 ```
 
 
 ```{r}
 ## Results
-(gamresults <- maxtemp_timeGAM %>% tidy(conf.int=TRUE))
-maxtemp_timeGAM %>% summary()
+#mindepth_timeGAM %>% tidy(conf.int=TRUE)
+mindepth_timeGAM %>% summary()
 ```
 
 
 ```{r fig.height = 56/25.4, fig.width = 56/25.4}
-maxtempgam_newdata <- 
-  maxtemp_timeGAM %>% 
+mindepthgam_newdata <- 
+  mindepth_timeGAM %>% 
   emmeans(~study_day, at = gam_grid) %>% 
   regrid() %>% 
   as_tibble() %>% 
@@ -235,66 +222,46 @@ maxtempgam_newdata <-
 ```
 
 
-
 # Figure for depth variation by time of day
 ```{r fig.width = 170/25.4, fig.height = 52/25.4}
-time_maxTb_plot <- 
     ggplot() +
-    geom_point(data = shark_daily_td, aes(x = study_day, y = daily_max_temp), pch = 21, alpha = 0.5) +
-    geom_ribbon(data = maxtempgam_newdata, aes(y = emmean, x = study_day, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
-    geom_line(data = maxtempgam_newdata, aes(y = emmean, x = study_day)) +
+    geom_line(data = shark_daily_td, aes(x = date, y = daily_min_depth)) +
+    geom_ribbon(data = mindepthgam_newdata, aes(y = response, x = date, ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.8) +
+    geom_line(data = mindepthgam_newdata, aes(y = response, x = date)) +
     ylab("Temp (°C)") + 
     xlab("Day of year") +
-   # scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
+    scale_y_reverse() +
     theme_minimal() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
         legend.position = "none") 
-
-time_maxTb_plot
 ```
 
+Not much point in presenting the results of this - just outliers pulling CI down but only to 3 meters or so! Won't even see it on the main figure.
 
-# Extract key findings
-```{r}
-# Model points towards sustained high temps immediately before TC Seth
-maxtempgam_newdata %>% 
-  slice_max(emmean, n = 12) %>%  # Max modeled max temperature 30°C
-  arrange(date)
-
-# Concurs with raw data:
-shark_daily_td %>% 
-  slice_max(SST, n = 5)  # Max modeled max temperature 30°C
-
-
-
-```
 
 ## Redo the time series fig with the correct GAM data included
 ## Daily temps (all) vs SST
 ```{r fig.width = 170/25.4, fig.height = 70/25.4}
-shark_daily_temps_plot <- 
+shark_daily_depths_plot <- 
   ggplot() +
-  geom_line(data = shark_daily_td, aes(x = date, y = SST), colour = "grey15", lwd = 0.6, lty = 3313) +
-  geom_ribbon(data = maxtempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "red", colour = "NA") +
-  geom_line(data = maxtempgam_newdata, aes(y = emmean, x = date), colour = "red") +
-  geom_line(data = shark_daily_td, aes(x = date, y = daily_max_temp), colour = "red") +
-  geom_line(data = shark_daily_td, aes(x = date, y = daily_min_temp), colour = "midnightblue") +
-  geom_ribbon(data = mintempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "midnightblue", colour = "NA") +
-  geom_line(data = mintempgam_newdata, aes(y = emmean, x = date), colour = "midnightblue") +
-  geom_line(data = shark_daily_td, aes(x = date, y = daily_mean_temp), colour = "grey40") +
-  geom_ribbon(data = meantempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "grey40", colour = "NA") +
-  geom_line(data = meantempgam_newdata, aes(y = emmean, x = date), colour = "grey40") +
-  #scale_x_continuous() +
-  scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
+  geom_line(data = shark_daily_td, aes(x = date, y = daily_min_depth), colour = "skyblue") +
+  geom_ribbon(data = meandepthgam_newdata, aes(y = response, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "dodgerblue", colour = "NA") +
+  geom_line(data = meandepthgam_newdata, aes(x = date, y = response), colour = "dodgerblue") +
+  geom_line(data = shark_daily_td, aes(x = date, y = daily_mean_depth), colour = "dodgerblue") +
+  geom_ribbon(data = maxdepthgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "midnightblue", colour = "NA") +
+  geom_line(data = shark_daily_td, aes(x = date, y = daily_max_depth), colour = "midnightblue") +
+  geom_line(data = maxdepthgam_newdata, aes(y = emmean, x = date), colour = "midnightblue") +
   theme_minimal() +
+  scale_y_reverse() +
+  scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
   theme(axis.title = element_text(size = 9, colour = "black"),
         axis.text = element_text(size = 9, colour = "black")) +
   xlab("Month of year (2021 - 2022)") +
-  ylab("Temp (°C)")
+  ylab("Depth (m below sea level)")
 
-shark_daily_temps_plot
+shark_daily_depths_plot
 ```
 
 ```{r}

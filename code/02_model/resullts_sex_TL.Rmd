@@ -168,7 +168,7 @@ newdata_Sex_TL <- sst_maxd_final %>%
 ```
 
 
-```{r  fig.width = 100/25.4, fig.height = 100/25.4}
+```{r  fig.width = 140/25.4, fig.height = 70/25.4}
 #sex_TL_plot_cont <- 
 newdata_Sex_TL %>% 
   ggplot() +
@@ -188,7 +188,8 @@ newdata_Sex_TL %>%
         axis.text.x = element_text(size = 8),
         axis.title.y = element_text(size = 8),
         axis.text.y = element_text(size = 8),
-        legend.title = element_text(size = 8))
+        legend.title = element_text(size = 8)) +
+  facet_wrap(~ Sex)
 
 sex_TL_plot_cont
 ```

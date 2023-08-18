@@ -1,0 +1,300 @@
+---
+title: "Results output for GLMM2"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	include = FALSE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+#rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
+```
+
+
+# Introducion # 
+
+This document digs down into the interaction terms of the second mixed effect models we have.
+
+mod2 = daily_movt ~ SST * Sex * TL (from Aim 4 in the intro)
+
+From this model we are interested in the following interactions:
+
+SST * TL - from Aim 4 in the intro
+SST * Sex - from Aim 4 in the intro
+TL * Sex - not explicitly a stated aim but we have the interaction so we'll investigate anyways.
+
+# TL - we have a bimodal distribution with a large gap between 141 and 161 cm for both sexes. Otherwise the size range is similar
+Female  125-176 cm
+Male    130-171 cm
+
+We'll use these values to set sensible limits and contrasts on our model data.
+
+# Firt load model and data
+```{r message=FALSE, warning=FALSE, include=FALSE}
+sourceRmd("code/02_model/glmms_fit.Rmd")
+```
+
+# Interaction: TL * SST 
+
+# Create reference grid
+```{r}
+mod2_grid <- shark_individual_daily_td %>% 
+    with(list(TL = c(125, 175),
+              Sex = levels(Sex),
+              SST = seq_range(SST, n = 100))) # So we'll get 100 emmeans estimates per season
+```
+
+# Use emmmeans to create newdata tbl
+```{r}
+# New data  
+newdata_mod2 <- mod2 %>% 
+  emmeans(~TL|SST|Sex, at = mod2_grid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  mutate(T.L. = as.factor(case_when(TL < 145 ~ "Small",
+                                      TL > 150 ~ "Large")))
+```
+
+# Make plotting variable in data
+```{r}
+shark_individual_daily_td <- 
+  shark_individual_daily_td %>% 
+  mutate(T.L. = as.factor(case_when(TL < 145 ~ "Small",
+                                      TL > 150 ~ "Large")))
+```
+
+
+
+# And plot
+```{r  fig.width = 100/25.4, fig.height = 100/25.4}
+sexTL_SST_fig <- 
+newdata_mod2 %>% 
+  ggplot() +
+  geom_point(data = shark_individual_daily_td, aes(x = SST, y = daily_movement, fill = T.L., colour = T.L.), 
+            pch = 19, alpha = 0.1, position = position_jitter(width = 0.5, height = 0.5)) +
+  geom_ribbon(aes(x = SST, y = response, ymin=asymp.LCL, ymax=asymp.UCL, fill = T.L., group = T.L.), alpha = 0.5) +
+  geom_line(aes(x = SST, y = response, group = T.L.), colour = "brown4", size = 0.3) +
+  scale_fill_manual(values = c("#3A6B35", "#E3B448")) +
+  scale_colour_manual(values = c("#3A6B35", "#E3B448")) +
+  #scale_color_viridis_d(option = "-D") +
+  #scale_fill_viridis_d(option = "-D") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 160), breaks = c(0, 25, 50, 75, 100, 125, 150),  expand = c(0,0)) +
+  scale_x_continuous(limits = c(25.65, 30.55), expand = c(0,0)) +
+  #theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 0.5)) +
+  ylab("Daily depth range (m)") + 
+  xlab("SST (°C)") +
+  theme(legend.direction = "horizontal",
+        legend.title = element_blank(),
+        legend.text = element_text(size = 8, colour = "black"),
+        strip.text = element_text(size = 9, colour = "black"),
+        legend.position = c(0.02, 0.98),
+        legend.justification = c(0,1),
+        legend.key.size = unit(0.35, "cm"),
+        legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 8, colour = "black")) +
+        #legend.title = element_text(size = 8),
+        #legend.text = element_text(size = 8)) +
+  #geom_text(data = Seasons, aes(x=26, y=100, label = Season), hjust = 0.2, vjust = -0.2, size = 3) +
+  facet_wrap(~Sex, ncol = 1, strip.position = "right")
+TL_sex_SST_fig
+```
+
+
+# Plot with facets other way around 
+```{r  fig.width = 100/25.4, fig.height = 60/25.4}
+TL_sex_SST_fig <- 
+newdata_mod2 %>% 
+  ggplot() +
+  geom_point(data = shark_individual_daily_td, aes(x = SST, y = daily_movement, fill = Sex, colour = Sex), 
+            pch = 21, alpha = 0.05, position = position_jitter(width = 0.5, height = 0.5)) +
+  geom_ribbon(aes(x = SST, y = response, ymin=asymp.LCL, ymax=asymp.UCL, fill = Sex, group = Sex), alpha = 0.5) +
+  geom_line(aes(x = SST, y = response, group = Sex), colour = "black", size = 0.3) +
+  scale_fill_manual(values = c("#440154", "#5ec962")) +
+  scale_colour_manual(values = c("#440154", "#5ec962")) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 160), breaks = c(0, 50, 100, 150),  expand = c(0.1,0.1)) +
+  scale_x_continuous(limits = c(25.6, 30.6), breaks = c(26,28,30), expand = c(0,0)) +
+  #theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 0.5)) +
+  ylab("Daily depth range (m)") + 
+  xlab("SST (°C)") +
+  theme(#legend.direction = "horizontal",
+        #legend.title = element_blank(),
+        #legend.text = element_text(size = 8, colour = "black"),
+        strip.text = element_blank(),
+        legend.position = "none",
+        #legend.justification = c(0,1),
+        #legend.key.size = unit(0.35, "cm"),
+        #legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 8, colour = "black")) +
+        #legend.title = element_text(size = 8),
+        #legend.text = element_text(size = 8)) +
+  #geom_text(data = Seasons, aes(x=26, y=100, label = Season), hjust = 0.2, vjust = -0.2, size = 3) +
+  facet_grid(vars(Sex), vars(T.L.))
+
+TL_sex_SST_fig
+```
+
+
+```{r}
+emm_demog <- 
+  mod2 %>% 
+  emmeans(~TL|Sex, at = mod2_grid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  mutate(T.L. = as.factor(case_when(TL < 145 ~ "Small",
+                                      TL > 150 ~ "Large")))
+
+```
+
+```{r}
+shark_individual_daily_td  %$% 
+  summary(daily_movement)
+```
+
+
+```{r  fig.width = 100/25.4, fig.height = 60/25.4}
+TL_sex_fig <- 
+  newdata_mod2 %>% 
+  ggplot() +
+  geom_point(data = shark_individual_daily_td, aes(x = T.L., y = daily_movement, colour = Sex, group = Sex), alpha = 0.01, pch = 15, 
+             size = 3, position = position_jitter(seed = 1, width = 0.35, height = 0.1)) +
+  geom_point(aes(x = T.L., y = response,  colour = Sex, group = Sex), fill = "transparent", alpha = 0.5, pch = 21, 
+             position = position_jitter(seed = 1, width = 0.35, height = 0.1)) +
+  geom_point(aes(x = T.L., y = response, fill = Sex, group = Sex), colour = "transparent", alpha = 0.3, pch = 21, 
+             position = position_jitter(seed = 1, width = 0.35, height = 0.1)) +
+  geom_pointrange(data = emm_demog, aes(x = T.L., y = response, ymin=asymp.LCL, ymax=asymp.UCL, shape = Sex, group = Sex), colour = "black", fill = "transparent", #pch = 22,
+                  alpha = 1,  size = 0.8, position = position_dodge(width = 0.35)) +
+  geom_pointrange(data = emm_demog, aes(x = T.L., y = response, ymin=asymp.LCL, ymax=asymp.UCL, shape = Sex, fill = Sex, group = Sex), colour = NA, # pch = 22,
+                  alpha = 0.8,  size = 0.8, position = position_dodge(width = 0.35)) +
+  scale_fill_manual(values = c("#440154", "#5ec962")) +       # viridis cols
+  scale_colour_manual(values = c("#440154", "#5ec962")) +      # viridis cols
+  scale_shape_manual(values = c(25, 24)) +
+  #scale_color_viridis(discrete = TRUE) +
+  #scale_fill_viridis(discrete = TRUE) +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 150), breaks = c(0, 50, 100, 150),  expand = c(0,0)) +
+  scale_x_discrete(expand = c(0.1, 0.1)) +
+  #theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 0.5)) +
+  ylab("Daily dep rng (m)") + 
+  xlab("Body size") +
+  theme(strip.text = element_text(size = 9, colour = "black"),
+        #legend.direction = "horizontal",
+        #legend.title = element_blank(),
+        #legend.text = element_text(size = 8, colour = "black"),
+        #legend.position = c(0.5, 0.98),
+        legend.position = "none",
+        #legend.justification = c(0.5,1),
+        #legend.key.size = unit(0.35, "cm"),
+        #legend.background = element_rect(fill = "white", colour = "black"),
+        axis.title.x = element_text(size = 9, colour = "black"),
+        axis.title.y = element_text(size = 9, hjust = 2, colour = "black"),
+        axis.text = element_text(size = 8, colour = "black"))
+
+TL_sex_fig 
+```
+
+```{r}
+male <- readPNG("data/male.png") %>% grid::rasterGrob(interpolate = TRUE)
+female <- readPNG("data/female.png") %>% grid::rasterGrob(interpolate = TRUE)
+```
+
+
+
+
+# Plot together
+
+```{r  fig.width = 90/25.4, fig.height = 110/25.4}
+TL_sex_SST_figcombined <- 
+  cowplot::plot_grid(TL_sex_SST_fig, TL_sex_fig, nrow = 2, rel_heights = c(1,0.7), labels = c('A', 'B'), hjust = -1, label_size = 9, align = "v") +
+  theme(plot.background = element_rect(color = "black", linewidth = 1),
+        panel.background = element_rect(color = "black", linewidth = 1)) +
+  annotation_custom(male, xmin = 0.18, xmax = 0.25, ymin = 0.31) +
+  annotation_custom(female, xmin = 0.18, xmax = 0.24, ymin = 0.83)
+TL_sex_SST_figcombined
+```
+
+```{r}
+mod1
+mod2
+```
+
+
+# Save
+```{r}
+ggsave(TL_sex_SST_figcombined, file = "output/TL_sex_SST_figcombined.pdf", width = 80, height = 100, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+# Actual results
+
+
+# Contrast - depth use by body size
+```{r}
+mod2 %>% 
+emmeans(~Sex|TL, at = mod2_grid) %>% 
+  regrid()
+
+mod2 %>% 
+emmeans(~Sex|TL, at = mod2_grid) %>% 
+  regrid()%>% 
+  pairs() %>% 
+  confint()
+
+mod2 %>% 
+emmeans(~TL|Sex, at = mod2_grid) %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint()
+```
+
+# Trend
+
+```{r}
+#sex_trends <- 
+  mod2 %>% 
+  emtrends(specs = pairwise~"Sex", var = "SST", infer = TRUE) %>% 
+  regrid()
+
+sex_trendsum <- summary(sex_trends, infer = TRUE)
+
+sex_trendsum
+```
+
+```{r}
+library(modelbased)
+mod2 %>% estimate_slopes(trend = "SST", at = "Sex")
+mod1 %>% ggeffect()
+```
+
+
+```{r}
+# END #
+```
+
+

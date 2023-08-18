@@ -309,7 +309,7 @@ shark_daily_td %>%
   geom_line(aes(x = date, y = daily_min_depth), colour = "skyblue") +
   #geom_smooth(aes(x = date, y = daily_min_depth), colour = "blue",  method = "gam", formula = y ~ s(x, bs = 'cs')) + # method = "gam" implements mgcv
   geom_line(aes(x = date, y = daily_mean_depth), colour = "dodgerblue") +
-  geom_smooth(aes(x = date, y = daily_mean_depth), colour = "dodgerblue",  method = "gam", formula = y ~ s(x, bs = 'cs')) +
+  geom_smooth(aes(x = date, y = daily_mean_depth), colour = "dodgerblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
   geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
   geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
   #geom_smooth(aes(x = date, y = daily_max_depth), colour = "red") + # Basic smooth, rather than gam

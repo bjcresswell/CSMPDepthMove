@@ -78,6 +78,12 @@ ggsave(filename = "output/shark_temp_timeseries_fig.pdf", plot = shark_temp_time
 
 
 # Combine model results
+# Source models
+```{r}
+sourceRmd('code/02_model/grouped_models_temp.Rmd')
+```
+
+
 ## Cowplot
 ```{r fig.height = 45/25.4, fig.width = 170/25.4}
 shark_temp_model_fig <- cowplot::plot_grid(mod1_plot, mod2a_plot, mod3_plot, mod2b_plot, nrow = 1, labels = c('B', 'C', 'D', 'E'), rel_widths = c(1,1,1,1), label_size = 9, align = "h") +

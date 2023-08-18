@@ -41,26 +41,9 @@ source("code/packages.R")
 
 ## Plot daily depths
 ```{r fig.width = 170/25.4, fig.height = 70/25.4}
-shark_daily_depth_plot <- 
-shark_daily_td %>%   
-  ggplot() +
-  geom_line(aes(x = date, y = daily_min_depth), colour = "grey50") +
-  #geom_smooth(aes(x = date, y = daily_min_depth), colour = "blue",  method = "gam", formula = y ~ s(x, bs = 'cs')) + # method = "gam" implements mgcv
-  geom_line(aes(x = date, y = daily_mean_depth), colour = "dodgerblue") +
-  geom_smooth(aes(x = date, y = daily_mean_depth), colour = "dodgerblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
-  geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
-  geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
-  #geom_smooth(aes(x = date, y = daily_max_depth), colour = "red") + # Basic smooth, rather than gam
-  theme_minimal() +
-  scale_y_reverse() +
-  scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
-  theme(axis.text = element_text(size = 9, colour = "black")) +
-  theme(axis.title = element_text(size = 9, colour = "black")) +
-  #theme(axis.title.x = element_blank()) +
-  #theme(axis.ticks.x = element_blank()) +
-  xlab("Month of year (2021 - 2022)") +
-  ylab("Depth (m below sea level)")
-
+# GET PLOT FROM gam_temptime.Rmd
+sourceRmd('code/02_model/gam_depthtime.Rmd')
+# View
 shark_daily_depth_plot
 ```
 # Combine with SST plot
@@ -98,14 +81,20 @@ ggsave(filename = "output/shark_dep_timeseries_fig.pdf", plot = shark_dep_timese
 
 
 # Model results
+
+# Source models
+```{r}
+sourceRmd('code/02_model/grouped_models_depth.Rmd')
+```
+
 ## Cowplot
 ```{r fig.height = 56/25.4, fig.width = 170/25.4}
 shark_dep_model_fig <- cowplot::plot_grid(mod4_plot, mod5_plot, mod6_plot, mod7_plot, nrow = 1, labels = c('B', 'C', 'D', 'E'), rel_widths = c(1,1,1,1.25), label_size = 9, align = "h") +
   theme(plot.background = element_rect(color = "black")) +
-  annotate("text", x = 0.08, y = 0.9, label = expression("R"^2*"=0.47"), hjust = 0, size = 3) +
-  annotate("text", x = 0.31, y = 0.9, label = expression("R"^2*"=0.71"), hjust = 0, size = 3) +
-  annotate("text", x = 0.54, y = 0.9, label = expression("R"^2*"=0.001"), hjust = 0, size = 3) +
-  annotate("text", x = 0.78, y = 0.9, label = expression("R"^2*"=0.75"), hjust = 0, size = 3)
+  annotate("text", x = 0.08, y = 0.9, label = expression("R"^2*"=0.47"), hjust = 0, size = 2.5) +
+  annotate("text", x = 0.31, y = 0.9, label = expression("R"^2*"=0.71"), hjust = 0, size = 2.5) +
+  annotate("text", x = 0.54, y = 0.9, label = expression("R"^2*"=0.001"), hjust = 0, size = 2.5) +
+  annotate("text", x = 0.78, y = 0.9, label = expression("R"^2*"=0.75"), hjust = 0, size = 2.5)
 shark_dep_model_fig
 ```
 

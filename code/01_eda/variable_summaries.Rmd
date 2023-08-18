@@ -1,0 +1,123 @@
+---
+title: "Variable summaries - a document to check distributions"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	include = FALSE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+#rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
+```
+
+# Use this document to check the distributions, min, mean, max etc of the variables in this study.
+
+```{r}
+# Load data
+load(file = "data/Rdata/shark_individual_daily_td.Rdata")
+```
+
+# SST
+```{r}
+shark_individual_daily_td %>% 
+  ungroup() %>% 
+  summarise_at(vars(SST), list(min=min, Q1=~quantile(., probs = 0.25), median=median, mean = mean, Q3=~quantile(., probs = 0.75), max=max))
+```
+
+# Seasonal ranges
+```{r}
+season_ranges <-  
+  shark_individual_daily_td %>% 
+  filter(Season == "Winter") %>%  # 25.7 - 27.8°C
+  droplevels() %>% 
+  summarise_at(vars(SST),
+               list(min=min, max=max)) %>%
+  mutate(Season = "Winter") %>% 
+  bind_rows(
+  shark_individual_daily_td %>% 
+  filter(Season == "Summer") %>%  # 28.1 - 30.5°C
+  droplevels() %>% 
+  summarise_at(vars(SST),
+               list(min=min, max=max)) %>% 
+  mutate(Season = "Summer")) %>% 
+  bind_rows(
+  shark_individual_daily_td %>% 
+  filter(Season == "Spring") %>%  # 26.5 - 29.7°C
+  droplevels() %>% 
+  summarise_at(vars(SST),
+               list(min=min, max=max)) %>% 
+  mutate(Season = "Spring")) %>% 
+  bind_rows(
+  shark_individual_daily_td %>% 
+  filter(Season == "Autumn") %>%  # 27.7 - 30.1°C
+  droplevels() %>% 
+  summarise_at(vars(SST),
+               list(min=min, max=max)) %>% 
+  mutate(Season = "Autumn"))
+season_ranges
+```
+
+min.  max.  Season
+25.67	27.81	Winter		
+28.08	30.53	Summer		
+26.49	29.66	Spring		
+27.74	30.09	Autumn
+
+# Body size/TL
+```{r}
+load(file = "data/Rdata/shark_tp_data.Rdata")
+```
+
+## Summary of TL
+```{r}
+body_sizes <- 
+shark_tp_data %>% 
+  dplyr::select(transmitter_id, Sex, TL) %>% 
+  distinct() %>% 
+  arrange(TL)
+body_sizes
+
+```
+
+## Histogram of TL
+```{r fig.height=2, fig.width=3}
+body_sizes %>% 
+  ggplot() + geom_histogram(aes(x = TL))
+```
+
+
+## Daily movement
+```{r fig.height=3, fig.width=5}
+shark_individual_daily_td %>% ggplot() + geom_histogram(aes(x = daily_movement))
+```
+
+
+
+
+
+
+
+

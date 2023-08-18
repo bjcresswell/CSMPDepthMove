@@ -14,6 +14,7 @@ library(oce)
 library(ocedata)
 
 # Plotting
+library(viridis)
 library(patchwork)
 library(magick)
 library(cowplot)

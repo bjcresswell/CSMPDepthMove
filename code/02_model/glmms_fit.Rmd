@@ -1,0 +1,173 @@
+---
+title: "Shark temperature and depth - model building"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	include = FALSE,
+	message = FALSE,
+	warning = FALSE)
+```
+
+
+```{r include=FALSE}
+#rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
+```
+
+
+```{r}
+# Load data
+load(file = "data/Rdata/shark_individual_daily_td.Rdata")
+```
+
+
+## Introduction
+
+From basic data exploration steps, it looks like daily maximum depth is the response variable of most interest as a response to changes in SST over time. This document explores the relationship between maximum daily depth and SSTs and also build generalised mixed effect models (GLMMs) to tease apart the effects of other variables of interest.
+
+
+## Reminder of TL distribution (see variable_summaries.Rmd for more info)
+There's a fairly large gap between 140 and 160 cm. Not really an issue except trying to model TL as a continuous variable. Might use 125 and 175 as planned contrasts (130 and 170 are also the sizes of the two males).
+
+
+
+# Model requirements
+
+We already know we want to model the following interactions (with individual as random effect):
+
+1. daily_movt ~ SST * Season (from Aim 3 in the intro)
+2. daily_movt ~ SST * Sex * TL (from Aim 4 in the intro)
+
+
+
+# Model 1 #
+
+## Fit model 
+```{r}
+mod1 <- glmmTMB(daily_movement ~ SST * Season + (1|transmitter_id), data = shark_individual_daily_td, family = gaussian(), REML = FALSE)
+mod1a <- glmmTMB(daily_movement ~ SST * Season + (1|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE) 
+```
+
+## AIC scores
+```{r}
+AICc(mod1, mod1a)
+```
+
+## Residual diagnostics
+```{r}
+mod1 %>% simulateResiduals(plot=TRUE)
+mod1a %>% simulateResiduals(plot=TRUE)
+```
+No diff in residual diagnostics - both look ok
+
+## Check R2
+```{r}
+mod1 %>% performance::r2_nakagawa()
+mod1a %>% performance::r2_nakagawa()
+```
+Gaussian model explains more variance but AIC score worse..
+Will go with tweedie model due to the AIC score
+
+## Update model to include REML = TRUE and incorporate tweedie distribution
+```{r}
+mod1 <- update(object = mod1a, REML = TRUE)
+```
+
+
+## Mod investigation
+```{r}
+# Summary
+mod1 %>% summary()
+# Summary of random effects
+mod1 %>% ranef()
+```
+
+## Quick look at graphical output - Model 1
+```{r echo=FALSE}
+#mod1 %>% ggemmeans(~ Season) %>% plot
+#mod1 %>% ggemmeans(~ SST) %>% plot
+mod1 %>% ggemmeans(~ SST*Season) %>% plot
+#mod1 %>% ggemmeans(~ Season*SST) %>% plot
+```
+
+
+# Model 2
+
+```{r}
+mod2 <- glmmTMB(daily_movement ~ SST * Sex * TL + (1|transmitter_id), data = shark_individual_daily_td, family = gaussian(), REML = FALSE)
+mod2a <- glmmTMB(daily_movement ~ SST * Sex * TL + (1|transmitter_id), data = shark_individual_daily_td, family = tweedie(), REML = FALSE)
+```
+
+## Residual diagnostics
+```{r}
+mod2 %>% simulateResiduals(plot=TRUE)
+mod2a %>% simulateResiduals(plot=TRUE)
+```
+Again pretty similar. Tweedie maybe looks better
+
+## AIC scores
+```{r}
+AICc(mod2, mod2a)
+```
+
+## Check R2
+```{r}
+mod2 %>% performance::r2_nakagawa()
+mod2a %>% performance::r2_nakagawa()
+```
+Tweedie better R2 this time
+
+## Update model to include REML = TRUE and tw fam
+```{r}
+mod2 <- update(object = mod2a, REML = TRUE)
+```
+
+### SST and sex 
+We know (from the above) that males may remain a little deeper than females, but do they respond differently to SSTs or in the same way?
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+mod2 %>% ggemmeans(~ SST * Sex) %>% plot
+#mod2 %>% ggemmeans(~ Sex * SST) %>% plot
+```
+
+### SST and TL 
+We know (from the above) that males may remain a little deeper than females, but do they respond differently to SSTs or in the same way?
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+mod2 %>% ggemmeans(~ SST * TL) %>% plot
+#mod2 %>% ggemmeans(~ TL * SST) %>% plot
+```
+
+## Sex and TL
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+#mod2 %>% ggemmeans(~ Sex*TL) %>% plot
+mod2 %>% ggemmeans(~ TL*Sex) %>% plot
+```
+
+## Sex and TL —> for the main graphic, do this at small and large sizes of shark
+```{r echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+mod2 %>% ggemmeans(~ TL*SST*Sex) %>% plot 
+```
+
+
+```{r}
+# END - see glmms_results.Rmd next
+```
+
