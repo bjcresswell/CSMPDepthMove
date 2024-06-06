@@ -1,7 +1,8 @@
 ## ----include=FALSE------------------------------------------------------------
-#source("packages.R")
-#rm(list=ls()) # Clear out environment if necessary```
 
+#rm(list=ls()) # Clear out environment if necessary```
+source("code/packages.R")
+source("code/extras.R")
 
 ## ----load-dep2023i, message=FALSE, warning=FALSE------------------------------
 NHorn2023_D1 <- read_csv('data/ROV/2023-02-22 08-35-42 vehicle1.csv') %>% 
@@ -49,7 +50,7 @@ ggplot() +
   geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D1, colour = 'slateblue', size = 0.2) +
   geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2023_D2, colour = 'navy', size = 0.2) +
   scale_x_continuous(limits = c(24, 31)) +
-  theme_minimal() +
+  theme_bjc() +
   xlab("Temp (°C)") + 
   ylab("Depth (m below sea level")
 
@@ -63,7 +64,7 @@ ggplot() +
   geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = NHorn2021_D2, colour = 'grey50', size = 0.5) +
   geom_point(aes(x = temperature.temperature2, y = altitudeRelative), data = OspEnt2021, colour = 'grey30', size = 0.5) +
   scale_x_continuous(limits = c(24, 31)) +
-  theme_minimal() +
+  theme_bjc() +
   xlab("Temp (°C)") + 
   ylab("Depth (m below sea level")
 
@@ -107,7 +108,7 @@ BLUEROVplot <-
   #geom_hline(yintercept = -50, colour = "blue", lty = '22') +
   #geom_vline(xintercept = 28.21, colour = "blue", lty = '22') +
   scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
-  theme_minimal() +
+  theme_bjc() +
   xlab("Temp (°C)") + 
   ylab("Depth (m below sea level")
 
@@ -119,7 +120,7 @@ ROV_GAMplot <-
   geom_hline(yintercept = -50, colour = "blue", lty = '22') +
   geom_vline(xintercept = 28.21, colour = "blue", lty = '22') +
   scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
-  theme_minimal() +
+  theme_bjc() +
   xlab("Temp (°C)") + 
   ylab("Depth (m below sea level")
 
