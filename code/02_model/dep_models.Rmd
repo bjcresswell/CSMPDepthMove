@@ -1,0 +1,522 @@
+---
+title: "Shark daily depths ~ SST models"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	include = TRUE,
+	message = FALSE,
+	warning = FALSE)
+#rm(list=ls()) # Clear out environment if necessary
+```
+
+
+```{r include=FALSE}
+source("code/packages.R")
+source("code/extras.R")
+```
+
+# Load data
+```{r}
+# Using the shark grouped Rmd
+sourceRmd("code/01_eda/shark_daily_grouped.Rmd")
+shark_daily_td
+```
+
+
+# We need models for:
+
+5. Max daily depth ~ SST:               Gaussian GLM
+6. Mean daily depth ~ SST
+7. Min daily depth ~ SST
+8. Variability in daily depth ~ SST
+
+## Check distributions to get an idea of best error dist for models
+```{r}
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_depth)) # Prob gaussian
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_mean_depth)) # Almost bi-model but will try gaussian
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_min_depth)) # Looks zero-inflated but will check later on in DHARMa - prob NB
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_depth_sd)) #
+```
+
+All look approximately normal, apart from min depth which is almost always 0 (i.e. at the surface)
+
+
+# First, need a grid of SST values to use for plotting all models at the end
+```{r}
+SSTgrid <- shark_daily_td %>% 
+  with(list(SST = seq_range(SST, n = 100)))
+```
+
+
+
+##### Model 5: Daily Max Depth ~ SST #####
+
+## Model formula
+```{r}
+mod5 <- glm(daily_max_depth ~ SST, data = shark_daily_td, family = gaussian)
+mod5b <- gam(daily_max_depth ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, family = gaussian, method = "ML")
+```
+
+## Model validation
+```{r}
+# Dharma resids
+mod5 %>% simulateResiduals(plot = TRUE) # Look ok 
+mod5 %>% performance::check_outliers()
+mod5 %>% performance::r2()
+
+AIC(mod5, mod5b) # GAM adds nothing
+```
+
+## Results
+```{r}
+# broom::tidy
+(mod5results <- mod5 %>% tidy(conf.int=TRUE))
+
+# Manually - per 1°C increase SST
+mod5 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 25.5)))) %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+```
+
+# So for every 1° increase in SST the sharks max daily depth on average increases by 14m 95%CI [12.4-15.5]
+
+# 25.5 - 30.5 C SST contrast
+
+
+
+## Plot results
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod5_plot <-
+  mod5 %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  ggplot(aes(y = emmean, x = SST)) +
+  geom_point(data=shark_daily_td,  aes(y=daily_max_depth, x = SST), fill = "midnightblue", col = "black", alpha = 0.5, pch = 21) +
+  geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), fill = "midnightblue", alpha=0.6) +
+  geom_line(color = "black") +
+  ylab("Daily max depth (m)") + 
+  xlab("SST (°C)") +
+  scale_x_continuous(limits = c(25.6, 30.6), n.breaks = 6) +
+  theme_bjc() +
+  theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9)) 
+
+mod5_plot
+```
+
+
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod5_plot, file = "output/mod5_plot.pdf", width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+##### Model 6: Daily Mean Depth ~ SST #####
+
+## Model formula - Gamma GAM best fit
+```{r}
+mod6a <- glm(daily_mean_depth ~ SST, data = shark_daily_td)
+mod6b <- glm(daily_mean_depth ~ SST, data = shark_daily_td, family = Gamma)
+mod6c <- gam(daily_mean_depth ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, family = Gamma, method = "ML")
+```
+
+## Model validation
+```{r}
+# Dharma resids
+mod6a %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod6a %>% performance::check_outliers()
+mod6a %>% performance::r2()
+
+mod6b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod6b %>% performance::check_outliers()
+mod6b %>% performance::r2()
+
+mod6c %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod6c %>% performance::check_outliers()
+mod6c %>% performance::r2()
+
+AIC(mod6a, mod6b, mod6c)
+```
+
+```{r}
+mod6 <- mod6c
+```
+
+
+## Results
+```{r}
+# broom::tidy
+(mod6results <- mod6 %>% tidy(conf.int=TRUE, exponentiate = TRUE))
+mod6 |> summary()
+
+# Manually
+mod6 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 30, 29, 28, 27, 26, 25.5))), type = "response") %>% 
+  regrid() %>% 
+ # pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Contrast across SST range
+mod6 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 25.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Between 25.5 and 26.5
+mod6 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(26.5, 25.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Between 29.5 and 30.5
+mod6 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 29.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+```
+Mean daily depth at lowest SST (25.5°C) is 15m and at highest SST (30.5°C) it is over double - 41m.
+Mean daily depth at 26°C SST is 15m and at 30°C it is 33m. And not a linear trend:
+1°C increase in SST at low range (25.5-26.5) results in 1.5m greater mean daily depth while
+1°C increase in SST at high range (29.5-30.5) results in a 13m greater mean daily depth - nearly 10x the response.
+
+
+## Plot results
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod6_plot <- 
+  mod6 %>% 
+  emmeans(~SST, at = SSTgrid, type = "response") %>% 
+  #regrid(transform = TRUE, ) %>% 
+  as_tibble() %>% 
+  ggplot(aes(y = response, x = SST)) +
+  geom_point(data=shark_daily_td,  aes(y=daily_mean_depth, x = SST), fill = "dodgerblue", col = "black", alpha = 0.6, pch = 21) +
+  geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), fill = "dodgerblue", alpha=0.6) +
+  geom_line(colour = "black") +
+  ylab("Daily mean depth (m)") + 
+  xlab("SST (°C)") +
+  scale_x_continuous(limits = c(25.6, 30.6), n.breaks = 6) +
+  theme_bjc() +
+  theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9)) 
+
+mod6_plot
+```
+
+
+# Save
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod6_plot, file = "output/mod6_plot.pdf", device = cairo_pdf, width = 56, height = 56, units = "mm", dpi = 300)
+```
+
+
+
+## Add to time-series data if required
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+#(daily_mean_depth_model_plot <- ggarrange(shark, mod6_plot, ncol = 2, widths = c(2,1)))
+#ggsave(daily_mean_depth_model_plot, file = "output/daily_mean_depth_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
+```
+
+
+
+##### Model 7: Daily Min Depth ~ SST #####
+
+## Model formula - have to use negbinom due to all the 0s
+```{r}
+mod7a <- glm(daily_min_depth ~ SST, data = shark_daily_td) 
+mod7b <- glm(daily_min_depth ~ SST, data = shark_daily_td, family = negative.binomial(2)) # nb capacity comes from MASS package, so have to have this loaded
+```
+
+## Model validation
+```{r}
+# Dharma resids
+mod7a %>% simulateResiduals(plot = TRUE) # This is why you have to use nb!
+mod7b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod7b %>% performance::check_outliers()
+mod7b %>% testZeroInflation
+mod7b %>% performance::r2()
+```
+
+```{r}
+mod7 <- mod7b
+```
+
+
+## Results
+```{r}
+(mod7results <- mod7 %>% tidy(conf.int=TRUE))
+```
+
+## Plot results
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod7_plot <- 
+  mod7 %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  ggplot(aes(y = response, x = SST)) +
+  geom_point(data=shark_daily_td,  aes(y=daily_min_depth, x = SST), fill = "skyblue", col = "black", alpha = 0.6, pch = 21) +
+  geom_ribbon(aes(ymin = asymp.LCL, ymax = asymp.UCL), fill = "skyblue", alpha=0.3) +        # Had to change the ymin and max names as the model conducted in MASS
+  geom_line(colour = "black") +
+  ylab("Daily min depth (m)") + 
+  xlab("SST (°C)") +
+  scale_x_continuous(limits = c(25.6, 30.6), n.breaks = 6) +
+  theme_bjc() +
+  theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9)) 
+
+
+mod7_plot
+```
+
+
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod7_plot, file = "output/mod7_plot.pdf", width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+
+## Add in time-series data
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+#(daily_min_depth_model_plot <- ggarrange(MinDep_SST_plot, mod7_plot, ncol = 2, widths = c(2,1)))
+#ggsave(daily_min_depth_model_plot, file = "output/daily_min_depth_model_plot.pdf", width = 180, height = 60, units = "mm", dpi = 300)
+```
+
+
+
+
+
+
+
+
+
+##### Model 8: Variability in depth use ~ SST #####
+
+# Depth variability Pt I - SD
+
+## SD first
+Need a GAM for this
+```{r}
+mod8a <- gam(daily_depth_sd ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, method = "ML")
+mod8b <- gam(daily_depth_sd ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, family = tw, method = "ML")
+```
+
+## Validation and Information criteria
+```{r}
+# Dharma resids
+mod8a %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod8b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+# AIC
+AIC(mod8a, mod8b)
+```
+Of the gams, the tw is the better fit. 
+
+
+```{r}
+mod8_sd <- mod8b
+```
+
+
+# Plot
+```{r fig.height = 100/25.4, fig.width = 100/25.4}
+mod8_sd_plot <- 
+  mod8_sd %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+    ggplot(aes(y = response, x = SST)) +
+    geom_point(data=shark_daily_td,  aes(y=daily_depth_sd, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
+    geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.7) +
+    geom_line() +
+    # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+    ylab("Daily mean depth S.D (m)") + 
+    xlab("SST (°C)") +
+    theme_bjc() +
+    theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9))
+mod8_sd_plot
+```
+
+# Results
+
+```{r}
+mod8_sd %>%  summary()
+```
+
+
+
+
+# Planned contrast SST extremes
+```{r}
+mod8_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 25.5)))) %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Rates of change
+# Between 25.5 and 26.5
+mod8_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(26.5, 25.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Between 29.5 and 30.5
+mod8_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 29.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+
+```
+
+
+
+# Save
+
+```{r}
+ggsave(mod8_sd_plot, file = "output/mod8_sd_plot.pdf", width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+# Depth variability Pt II - Depth diff - don't really need this as the SD tells more of the story
+
+# Fit candidate models
+```{r}
+mod8c <- glm(daily_depth_diff ~ SST, data = shark_daily_td)
+mod8d <- gam(daily_depth_diff ~ s(SST, bs = "cs", k = 3), data = shark_daily_td)
+```
+
+## Validation and Information criteria
+```{r}
+# Dharma resids
+mod8c %>% simulateResiduals(plot = TRUE) # 
+mod8d %>% simulateResiduals(plot = TRUE) # 
+# AIC
+AIC(mod8c, mod8d)
+performance::r2(mod8d)
+```
+
+
+These are basically the same but the GAM is slightly more complicated (obviously, with the basis terms etc). Check the summaries:
+```{r}
+mod8c |> summary()
+mod8d |> summary()
+```
+
+
+The GAM edf is pretty low (1.6) but is significant -> means there is some small amount of wiggliness, but perhaps not enough to justify a GAM over a GLM.
+We can plot to try to make more sense:
+
+# The GLM (on the depth diff)
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod8c %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+    ggplot(aes(y = emmean, x = SST)) +
+    geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
+    geom_line() +
+    geom_point(data=shark_daily_td,  aes(y=daily_depth_diff, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
+    # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+    ylab("Daily depth variation (m)") + 
+    xlab("SST (°C)") +
+    theme_bjc() +
+    theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9))
+mod8d %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+    ggplot(aes(y = emmean, x = SST)) +
+    geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
+    geom_line() +
+    geom_point(data=shark_daily_td,  aes(y=daily_depth_diff, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
+    # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+    ylab("Daily depth variation (m)") + 
+    xlab("SST (°C)") +
+    theme_bjc() +
+    theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9))
+
+
+```
+
+They both are telling the same story, but the GLM more parsiminious (less df) and more interpretable in this case (we don't really need a GAM here to tell us about changes in trends, inflection points etc)
+
+```{r}
+mod8_diff <- mod8c
+```
+
+
+# Planned contrast 26 - 30 ° C
+```{r}
+
+mod8_diff %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30, 26)))) %>% 
+  #regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+```
+
+So at 26°C SST variation in mean daily depth is ~70m. At 30°C it is 125m!! The diff is 55m 95%CI [50-62]
+
+
+```{r}
+# ENDS
+```
+
+
+
+
