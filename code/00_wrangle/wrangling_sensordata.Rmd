@@ -21,8 +21,9 @@ editor_options:
 
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-source('code/packages.R')
 #rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
+source("code/extras.R")
 getwd()
 ```
 
@@ -103,7 +104,7 @@ osp_sens_data %>%
   ylab("VR2W Location") +
   geom_point() +
   geom_vline(xintercept = as.numeric(osp_sens_data$detection_timestamp[c(5, 709325)])) +
-  theme_light()
+  theme_bjc()
 #osp_receiver_times
 #ggsave(plot = osp_receiver_times, filename = "../output/osp_receiver_times.png", device = 'png', width = 180, height = 100, units = "mm")
 
