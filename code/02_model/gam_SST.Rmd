@@ -19,19 +19,23 @@ editor_options:
 ---
 
 
+# Libraries and set up
 ```{r include=FALSE}
+#rm(list=ls()) # Clear out environment if necessary
 knitr::opts_chunk$set(echo = TRUE)
 source("code/packages.R")
+source("code/extras.R")
 library(gratia)
-#rm(list=ls()) # Clear out environment if necessary
 getwd()
 ```
 
 
+# Load data
 ```{r}
 load("data/RData/SST.Rdata")
 ```
 
+# Check
 ```{r}
 shark_individual_daily_td %>% 
   ggplot() +
@@ -100,7 +104,7 @@ SST.gam1a %>% draw(residuals = TRUE)
 
 
 ```{r}
-SST.gam %>% dplyr::select(summary.df)
+SST.gam1a %>% dplyr::select(summary.df)
 ```
 
 ```{r}
@@ -115,8 +119,8 @@ SST.gam2 <- SSTgamdata %>%
                               method = 'REML') 
 
 SST.gam3 <- SST.gam %>%
-  select(gam) %>% 
-  unnest()
+  dplyr::select(gam) %>% 
+  unnest(cols = c(gam))
   
 
 SST.gam$gam[[1]]
@@ -219,10 +223,13 @@ SST.GAM.plot.data %>%
   geom_point(data = SST_cold, aes(x = date, y = emmean), col = "black", fill = "blue", alpha = 1, size = 5, pch = 25) +
   xlab("Date") +
   ylab("Estimated marginal mean SST (°C)") +
-  theme_minimal()
-#END
+  theme_bjc()
+```
 
 
+
+```{r}
+# END #
 ```
 
 

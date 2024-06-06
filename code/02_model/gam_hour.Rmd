@@ -27,6 +27,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r include=FALSE}
 getwd()
 source("code/packages.R")
+source("code/extras.R")
 #rm(list=ls()) # Clear out environment if necessary
 ```
 
@@ -151,7 +152,7 @@ depgam_plot <-
     scale_fill_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
     scale_y_reverse() +
     scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
-    theme_minimal() +
+    theme_bjc() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
@@ -174,7 +175,7 @@ hr_sddepth_plot <- hourly_shark_data %>%
   geom_point(aes(x = hour, y = sd_depth, fill = Season), pch = 21, alpha = 0.5) +
   scale_fill_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
   #scale_y_reverse() +
-  theme_minimal() +
+  theme_bjc() +
   theme(#plot.background = element_rect(colour = "black", linewidth = 1),
         axis.title.y = element_text(size = 9),
         axis.title.x = element_text(size = 9)) +
@@ -240,14 +241,14 @@ hr_dep_sst_plot <-
   #annotate("rect", xmin = -0.5, xmax = -0.1, ymin = -0.3, ymax = 150,  fill = "white") +
   geom_errorbar(data = hourly_shark_data, aes(ymin = mean_depth-sd_depth, ymax = mean_depth+sd_depth, x = hour), width = 0.5, colour = "black", linewidth = 0.2) +
   geom_point(data = hourly_shark_data, aes(x = hour, y = mean_depth), colour = "black", fill = "white", pch = 21, alpha = 0.9) +
-  #geom_ribbon(data = depgam_newdata, aes(y = response, x = hour, ymin=lower.CL, ymax=upper.CL), colour = "grey40", fill = "grey40", alpha = 0.5) +
+  geom_ribbon(data = depgam_newdata, aes(y = response, x = hour, ymin=lower.CL, ymax=upper.CL), colour = "grey40", fill = "grey40", alpha = 0.5) +
   geom_line(data = depgam_newdata, aes(y = response, x = hour), colour = "black", linewidth = 0.5) +
   scale_y_reverse(limits = c(150, -0.3), expand = c(0,0)) +
   scale_x_continuous(limits = c(-0.3, 24), breaks = c(0, 6, 12, 18, 24)) +
   annotation_custom(moon, xmin = 1.5, xmax = 4.5, ymax = -120) +
   annotation_custom(moon, xmin = 19.5, xmax = 22.5, ymax = -120) +
   annotation_custom(sun, xmin = 10, xmax = 14, ymax = -120) +
-  theme_minimal() +
+  theme_bjc() +
   theme(#panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5),    # Box around each plot
         plot.background = element_rect(colour = "black", linewidth = 0.5),             # Box around whole plot
         axis.title.y = element_text(size = 9),
@@ -273,6 +274,55 @@ ggsave(hr_dep_sst_plot, file = "output/hr_dep_sst_plot_final_2col.png", device =
 ```
 
 
+# Need to plot full range (y axis for sup mat)
+```{r fig.height=100/25.4, fig.width=120/25.4}
+hr_dep_sst_plot_full <-  
+  ggplot() +
+  annotate("rect", xmin = 0, xmax = 24, ymin = 0, ymax = 200, fill = "grey70", alpha = 0.4) + # Boxes to indicate night vs day. Need to start at -0.3 to reach underneath jittered pts
+  annotate("rect", xmin = 0, xmax = 6, ymin = 0, ymax = 200, fill = "grey40", alpha = 0.3) + # Boxes to indicate night vs day 
+  annotate("rect", xmin = 18, xmax = 24, ymin = 0, ymax = 200, fill = "grey40", alpha = 0.3) + # Boxes to indicate night vs day 
+  geom_point(data = hr_dep_sst_data, aes(x = hour, y = Depth, colour = SST), pch = 20, alpha = 0.8, size = 0.1, position = "jitter") +
+ # geom_point(data = hr_dep_sst_data, aes(x = hour, y = Depth, colour = SST), fill = "transparent", pch = 22, alpha = 0.7, position = "jitter") +
+  scale_fill_gradient2(low = "darkblue", mid = "transparent", high = "red2", midpoint = 28)  +
+  scale_colour_gradient2(low = "darkblue", mid = "transparent", high = "red2", midpoint = 28)  + 
+  #scale_fill_gradient(low = "blue", high = "red2", aesthetics = c("colour", "fill"))  +
+  #annotate("rect", xmin = -0.5, xmax = -0.1, ymin = -0.3, ymax = 200,  fill = "white") +
+  geom_errorbar(data = hourly_shark_data, aes(ymin = mean_depth-sd_depth, ymax = mean_depth+sd_depth, x = hour), width = 0.5, colour = "black", linewidth = 0.2) +
+  geom_point(data = hourly_shark_data, aes(x = hour, y = mean_depth), colour = "black", fill = "white", pch = 21, alpha = 0.9) +
+  geom_ribbon(data = depgam_newdata, aes(y = response, x = hour, ymin=lower.CL, ymax=upper.CL), colour = "grey40", fill = "grey40", alpha = 0.5) +
+  geom_line(data = depgam_newdata, aes(y = response, x = hour), colour = "black", linewidth = 0.5) +
+  scale_y_reverse(breaks = c(0, 50, 100, 150, 200), expand = c(0,0)) +
+#  scale_y_reverse(limits = c(150, -0.3), expand = c(0,0)) + # If you want to see how many points you lose by cutting off at 150m (it's <300 of 362000)
+  scale_x_continuous(breaks = c(0, 6, 12, 18, 24)) +
+  annotation_custom(moon, xmin = 1.5, xmax = 4.5, ymax = -120) +
+  annotation_custom(moon, xmin = 19.5, xmax = 22.5, ymax = -120) +
+  annotation_custom(sun, xmin = 10, xmax = 14, ymax = -120) +
+  theme_bjc() +
+  theme(#panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.5),    # Box around each plot
+        plot.background = element_rect(colour = "black", linewidth = 0.5),             # Box around whole plot
+        axis.title.y = element_text(size = 9),
+        axis.title.x = element_text(size = 9)) +
+  theme(legend.title = element_text(size = 9), 
+        #legend.position = "none", 
+        legend.text = element_text(size = 9)) +
+  facet_wrap(~ Season, ncol = 2, nrow = 2) +
+  ylab("Depth (m)") + 
+  xlab("Time of day")
 
+hr_dep_sst_plot_full
+
+```
+# Save
+```{r}
+ggsave(hr_dep_sst_plot_full, file = "output/hr_dep_sst_plot_full.jpg", device = "jpeg", width = 120, height = 100, units = "mm", dpi = 300)
+```
+
+
+
+
+
+```{r}
+# END #
+```
 
 

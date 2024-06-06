@@ -22,6 +22,8 @@ editor_options:
 ```{r include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 source("code/packages.R")
+source("code/extras.R")
+
 #rm(list=ls()) # Clear out environment if necessary
 ```
 
@@ -100,7 +102,7 @@ mintempgam_newdata <- mintemp_timeGAM %>%
 ```
 
 
-# Figure for depth variation by time of day
+# Figure for temp variation by time of day
 ```{r fig.width = 170/25.4, fig.height = 52/25.4}
 #time_temp_gam_plot <- 
     ggplot() +
@@ -110,7 +112,7 @@ mintempgam_newdata <- mintemp_timeGAM %>%
     ylab("Temp (°C)") + 
     xlab("Day of year") +
    # scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
-    theme_minimal() +
+    theme_bjc() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
@@ -170,7 +172,7 @@ time_temp_gam_plot <-
     ylab("Temp (°C)") + 
     xlab("Day of year") +
    # scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
-    theme_minimal() +
+    theme_bjc() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
@@ -232,7 +234,7 @@ time_maxTb_plot <-
     ylab("Temp (°C)") + 
     xlab("Day of year") +
    # scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
-    theme_minimal() +
+    theme_bjc() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
@@ -262,19 +264,19 @@ shark_daily_td %>%
 ```{r fig.width = 170/25.4, fig.height = 70/25.4}
 shark_daily_temps_plot <- 
   ggplot() +
-  geom_line(data = shark_daily_td, aes(x = date, y = SST), colour = "grey15", lwd = 0.6, lty = 3313) +
+  #geom_line(data = shark_daily_td, aes(x = date, y = SST), colour = "grey15", lwd = 0.6, lty = 3313) +
   geom_ribbon(data = maxtempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "red", colour = "NA") +
   geom_line(data = maxtempgam_newdata, aes(y = emmean, x = date), colour = "red") +
   geom_line(data = shark_daily_td, aes(x = date, y = daily_max_temp), colour = "red") +
-  geom_ribbon(data = mintempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "midnightblue", colour = "NA") +
-  geom_line(data = shark_daily_td, aes(x = date, y = daily_min_temp), colour = "midnightblue") +
-  geom_line(data = mintempgam_newdata, aes(y = emmean, x = date), colour = "midnightblue") +
+  geom_ribbon(data = mintempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "blue", colour = "NA") +
+  geom_line(data = shark_daily_td, aes(x = date, y = daily_min_temp), colour = "blue") +
+  geom_line(data = mintempgam_newdata, aes(y = emmean, x = date), colour = "blue") +
   geom_ribbon(data = meantempgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "grey40", colour = "NA") +
   geom_line(data = shark_daily_td, aes(x = date, y = daily_mean_temp), colour = "grey40") +
   geom_line(data = meantempgam_newdata, aes(y = emmean, x = date), colour = "grey40") +
   scale_y_continuous(breaks = c(24,25,26,27,28,29,30,31)) +
   scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
-  theme_minimal() +
+  theme_bjc() +
   theme(axis.title = element_text(size = 9, colour = "black"),
         axis.text = element_text(size = 9, colour = "black")) +
   xlab("Month of year (2021 - 2022)") +

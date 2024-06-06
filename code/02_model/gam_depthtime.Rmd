@@ -84,6 +84,7 @@ gam.check(maxdepth_timeGAM)
 maxdepth_timeGAM %>% summary()
 ```
 
+
 # Make grid to use for all depth models
 ```{r fig.height = 56/25.4, fig.width = 56/25.4}
 gam_grid <- shark_daily_td %>% 
@@ -108,7 +109,7 @@ maxdepthgam_newdata <- maxdepth_timeGAM %>%
     ylab("Depth (m)") + 
     xlab("Day of year") +
     scale_y_reverse() +
-    theme_minimal() +
+    theme_bjc() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
@@ -159,7 +160,7 @@ meandepthgam_newdata <- meandepth_timeGAM %>%
   mutate(date = as.Date(study_day, origin = "2021-10-30"))
 ```
 
-# Figure for depth variation by time of day
+# Figure
 ```{r fig.width = 170/25.4, fig.height = 52/25.4}
     ggplot() +
     geom_point(data = shark_daily_td, aes(x = study_day, y = daily_mean_depth), pch = 21, alpha = 0.5) +
@@ -168,7 +169,7 @@ meandepthgam_newdata <- meandepth_timeGAM %>%
     ylab("Depth (m)") + 
     xlab("Day of year") +
    # scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
-    theme_minimal() +
+    theme_bjc() +
     scale_y_reverse() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
@@ -231,7 +232,7 @@ mindepthgam_newdata <-
     ylab("Temp (°C)") + 
     xlab("Day of year") +
     scale_y_reverse() +
-    theme_minimal() +
+    theme_bjc() +
     theme(plot.background = element_rect(colour = "black", linewidth = 0.5),
         axis.title = element_text(size = 9),
         axis.text = element_text(size = 9),
@@ -253,7 +254,7 @@ shark_daily_depths_plot <-
   geom_ribbon(data = maxdepthgam_newdata, aes(y = emmean, x = date, ymin=lower.CL, ymax=upper.CL), alpha=0.4, fill = "midnightblue", colour = "NA") +
   geom_line(data = shark_daily_td, aes(x = date, y = daily_max_depth), colour = "midnightblue") +
   geom_line(data = maxdepthgam_newdata, aes(y = emmean, x = date), colour = "midnightblue") +
-  theme_minimal() +
+  theme_bjc() +
   scale_y_reverse() +
   scale_x_date(date_breaks = "1 months", date_labels = '%b', expand = c(0.02, 0.02)) +
   theme(axis.title = element_text(size = 9, colour = "black"),
@@ -261,7 +262,8 @@ shark_daily_depths_plot <-
   xlab("Month of year (2021 - 2022)") +
   ylab("Depth (m below sea level)")
 
-shark_daily_depths_plot
+shark_daily_depths_plot # The GAM plot
+shark_daily_depth_plot # ggplot smoother
 ```
 
 ```{r}
