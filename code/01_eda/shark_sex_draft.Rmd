@@ -4,18 +4,10 @@
 
 
 
-
-
-
 # Load SST data
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=16, fig.height=6}
 source(knitr::purl("code/00_wrangle/wrangling_SSTdata.Rmd", quiet = TRUE))
 ```
-
-
-
-
-
 
 ## Daily depths by sex
 ```{r fig.width=16, fig.height=6}
@@ -28,7 +20,7 @@ shark_individual_daily_depths %>%
   geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
   geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
   #geom_smooth(aes(x = date, y = daily_max_depth), colour = "red") + # Basic smooth, rather than gam
-  theme_minimal() +
+  theme_bjc() +
   scale_y_reverse() +
   #scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
   #theme(axis.text.x = element_text(angle = 45)) +

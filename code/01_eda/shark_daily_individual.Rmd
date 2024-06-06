@@ -27,8 +27,9 @@ classoption: a4paper
 
 ```{r}
 #knitr::opts_chunk$set(echo = TRUE, fig.width=4, fig.height=4)
-rm(list=ls()) # Clear out environment if necessary
+#rm(list=ls()) # Clear out environment if necessary
 source("code/packages.R")
+source("code/extras.R")
 ```
 
 # Load shark T/P data
@@ -199,7 +200,7 @@ ggplot() +
   geom_line(aes(x = date, y = SST), colour = "black") +
   #geom_line(aes(x = Month, y = SST), data = AMM_for_plot, colour = "black") +
   scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
-  theme_minimal() +
+  theme_bjc() +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5)) +
   #annotate("text", x = as.Date("2021-11-01"), y = 30.5, label = "a") +
   xlab("\nDate") + 
@@ -222,7 +223,7 @@ shark_individual_daily_td %>%
   geom_line(aes(x = date, y = daily_max_depth), colour = "midnightblue") +
   geom_smooth(aes(x = date, y = daily_max_depth), colour = "midnightblue",  method = "gam", formula = y ~ s(x, bs = 'cs'), level = 0.95) +
   #geom_smooth(aes(x = date, y = daily_max_depth), colour = "red") + # Basic smooth, rather than gam
-  theme_minimal() +
+  theme_bjc() +
   scale_y_reverse() +
   #scale_x_date(date_breaks = "1 months", date_labels = '%Y-%m') +
   #theme(axis.text.x = element_text(angle = 45)) +
@@ -245,7 +246,7 @@ shark_individual_daily_td %>%
   geom_point(aes(x = SST, y = daily_max_depth)) +
   #geom_smooth(aes(x = daily_max_temp, y = daily_max_depth), method = "gam", formula = y ~ s(x, bs = 'cs')) +
   geom_smooth(aes(x = SST, y = daily_max_depth), method = "lm") +
-  theme_minimal() +
+  theme_bjc() +
   ylab("Daily maximum depth (mbsl)") + 
   xlab("SST") +
   facet_wrap(facets = "transmitter_id", ncol = 3)

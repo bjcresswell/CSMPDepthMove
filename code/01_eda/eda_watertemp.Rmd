@@ -26,8 +26,9 @@ getwd()
 
 
 ```{r include=FALSE}
-source("code/packages.R")
 #rm(list=ls()) # Clear out environment if necessary
+source("code/packages.R")
+source("code/extras.R")
 ```
 
 
@@ -51,6 +52,28 @@ osprey_ctd_thin <- osprey_ctd %>%
   filter(depth %% 2 == 1)
 ```
 
+## CTD - all the way down
+```{r  fig.width = 80/25.4, fig.height = 110/25.4}
+ctd_full <- 
+  ctd_raw@data %>% 
+  as_tibble() 
+ 
+ctd_full %>% 
+   ggplot() + 
+  geom_point(aes(x = temperature, y = depth), bg = "skyblue", alpha = 0.01, colour = "black", stroke = 0.05, pch = 21, size = 1, position = "jitter") +
+  #geom_smooth(aes(x = temperature, y = depth), data = osprey_ctd, colour = "dodgerblue", method = "loess", formula = 'y ~ poly(x)') +
+  #scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
+  scale_y_reverse(position = "right") +
+  theme_bjc() +
+  xlab("Temp (°C)") +
+  ylab("Depth (m)") +
+      theme(plot.background = element_rect(color = "black")) 
+
+
+```
+
+
+
 
 ## ROV
 ```{r}
@@ -62,9 +85,9 @@ osprey_rov_thin <- ROV_temp_comb %>%
 
 
 # Plot
-```{r  fig.width = 60/25.4, fig.height = 70/25.4}
+```{r  fig.width = 80/25.4, fig.height = 110/25.4}
 osp_temp_atten <- 
-  ggplot() +
+  ggplot() + 
   geom_point(aes(x = temp, y = depth), data = osprey_ctd_thin, bg = "skyblue", 
              alpha = 0.4, colour = "black", stroke = 0.3, pch = 21, size = 2, position = "jitter") +
   geom_point(aes(x = temp, y = depth), data = osprey_rov_thin, bg = "tomato", 
@@ -73,36 +96,60 @@ osp_temp_atten <-
   geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red", method = "loess", formula = 'y ~ poly(x)') +
   scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
   scale_y_reverse(position = "right") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(size = 9,  vjust = 1),
-        axis.text.y = element_text(size = 9),
-        axis.title = element_text(size = 9)) +
- #geom_hline(yintercept = -100, lwd = 0.2, lty = 88) +
+  theme_bjc() +
   xlab("Temp (°C)") +
-  ylab("Depth (m below sea level)") 
+  ylab("Depth (m)") +
+      theme(plot.background = element_rect(color = "black")) 
+
 
 osp_temp_atten
 ```
 
 # Save
 ```{r}
-ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten, device = cairo_pdf, width = 170, height = 70, units = "mm", dpi = 300)
+ggsave(filename = "output/osp_temp_atten.pdf", osp_temp_atten, device = cairo_pdf, 
+       width = 80, height = 110, units = "mm", dpi = 300)
 ```
 
+
+
+# Split plot out for seminar ppt
+```{r  fig.width = 60/25.4, fig.height = 70/25.4}
+osp_temp_atten_summer <- 
+  ggplot() +
+  geom_point(aes(x = temp, y = depth), data = osprey_rov_thin, bg = "tomato", alpha = 0.4, colour = "black", stroke = 0.3, pch = 21, size = 2) +
+  geom_smooth(aes(x = temp, y = depth), data = ROV_temp_comb, colour = "red", method = "loess", formula = 'y ~ poly(x)') +
+  scale_x_continuous(limits = c(24.5, 30.5), breaks = c(24, 25, 26, 27, 28, 29, 30)) +
+  scale_y_reverse(position = "right") +
+  theme_bjc() +
+  xlab("Temp (°C)") +
+  ylab("Depth (m)") 
+
+osp_temp_atten_summer
+```
+
+
+# Save
+```{r}
+ggsave(filename = "output/osp_temp_atten_summer.pdf", osp_temp_atten_summer, device = cairo_pdf,
+       width = 80, height = 110, units = "mm", dpi = 300)
+```
 
 
 # Combine with SST plot
 
-```{r}
+```{r  fig.width = 170/25.4, fig.height = 70/25.4}
 sourceRmd("code/00_wrangle/wrangling_SSTdata.Rmd")
 SSTvAMMplot
 ```
 
+# Figure for ms (Fig 2)
 ```{r  fig.width = 170/25.4, fig.height = 70/25.4}
 watertemp_fig <- 
   cowplot::plot_grid(SSTvAMMplot, osp_temp_atten, nrow = 1, labels = c('A', 'B'), label_size = 9, #label_y = 1,
                                                rel_widths = c(1.1, 0.5), align = "h") +
-    theme(plot.background = element_rect(color = "black")) 
+  theme(panel.border = element_rect(color = "black", fill = "transparent", linewidth = 1))
+
 watertemp_fig
 ```
 
@@ -111,11 +158,101 @@ watertemp_fig
 # Save
 ```{r}
 ggsave(filename = "output/watertemp_fig.pdf", watertemp_fig, device = cairo_pdf, width = 170, height = 70, units = "mm", dpi = 300)
+ggsave(filename = "output/watertemp_fig.jpg", watertemp_fig, device = "jpeg", width = 190, height = 70, units = "mm", dpi = 300)
+```
+
+
+
+# Plots for seminar #
+
+
+## Plain long-term climatology (AMM)
+```{r  fig.width = 170/25.4, fig.height = 70/25.4}
+AMM_SST %>% 
+  ggplot() +
+  geom_line(aes(x = Month, y = AMM)) +
+  geom_point(aes(x = Month, y = AMM)) +
+  theme_bjc() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b') +
+  theme(axis.text.x = element_text(angle = 30,  vjust = 0.8)) +
+  xlab("Month of year") + 
+  ylab("Averaged monthly mean SST \n (°C)")
+```
+
+
+```{r  fig.width = 140/25.4, fig.height = 60/25.4}
+climatology_fig <- 
+ggplot() +
+  geom_line(aes(x = Month, y = AMM), data = AMM_SST, colour = "dodgerblue") +
+  geom_point(aes(x = Month, y = AMM), data = AMM_SST, fill = "dodgerblue", colour = "black", stroke = 0.8, pch = 22, alpha = 0.9, size = 2) +
+  theme_bjc() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b', limits = c(as_date("2021-10-14"), as_date("2022-10-16"))) +
+  scale_y_continuous(limits = c(24.5, 30.5), breaks = c(25,26,27,28,29,30)) +
+  theme(axis.text.x = element_text(hjust = -0.6)) +
+  xlab("Month") + 
+  ylab("SST (°C)")
+climatology_fig
+```
+
+The MMM from the climatology is February with an AMM SST of 28.7°C
+
+# Save
+```{r}
+ggsave(filename = "output/climatology_fig.pdf", climatology_fig, device = cairo_pdf, width = 140, height = 60, units = "mm", dpi = 300)
 ```
 
 
 
 
+```{r  fig.width = 140/25.4, fig.height = 60/25.4}
+climatology_SSTdetail_fig <- 
+ggplot() +
+  geom_line(aes(x = date, y = SST), data = SST, colour = "grey20") +
+  geom_line(aes(x = Month, y = AMM), data = AMM_SST, colour = "dodgerblue") +
+  geom_point(aes(x = Month, y = AMM), data = AMM_SST, fill = "dodgerblue", colour = "black", stroke = 0.8, pch = 22, alpha = 0.9, size = 2) +
+  theme_bjc() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b', limits = c(as_date("2021-10-14"), as_date("2022-10-16"))) +
+  scale_y_continuous(limits = c(24.5, 30.6), breaks = c(25,26,27,28,29,30)) +
+  theme(axis.text.x = element_text(hjust = -0.6)) +
+  xlab("Month (2021-2022)") + 
+  ylab("SST (°C)")
+climatology_SSTdetail_fig
+```
+
+# Save
+```{r}
+ggsave(filename = "output/climatology-and-SST-fig.pdf", climatology_SSTdetail_fig, device = cairo_pdf, width = 140, height = 60, units = "mm", dpi = 300)
+```
+
+
+
+
+```{r  fig.width = 140/25.4, fig.height = 60/25.4}
+lt_vs_studyyear_MMs <- 
+ggplot() +
+  geom_line(aes(x = Month, y = MM), data = study_MM, colour = "firebrick") +
+  geom_point(aes(x = Month, y = MM), data = study_MM, fill = "firebrick", colour = "black", stroke = 0.8, pch = 24, alpha = 0.9, size = 2) +
+  geom_line(aes(x = Month, y = AMM), data = AMM_SST, colour = "dodgerblue") +
+  geom_point(aes(x = Month, y = AMM), data = AMM_SST, fill = "dodgerblue", colour = "black", stroke = 0.8, pch = 22, alpha = 0.9, size = 2) +
+  theme_bjc() +
+  scale_x_date(date_breaks = "1 month", date_labels = '%b', limits = c(as_date("2021-10-14"), as_date("2022-10-16"))) +
+  scale_y_continuous(limits = c(24.5, 30.5), breaks = c(25,26,27,28,29,30)) +
+  theme(axis.text.x = element_text(hjust = -0.6)) +
+  xlab("Month (2021-2022)") + 
+  ylab("SST (°C)")
+lt_vs_studyyear_MMs
+```
+
+
+```{r}
+ggsave(filename = "output/climatology-lt_vs_studyyear_MMs.pdf", lt_vs_studyyear_MMs, device = cairo_pdf, width = 140, height = 60, units = "mm", dpi = 300)
+```
+
+
+
+```{r}
+# END #
+```
 
 
 

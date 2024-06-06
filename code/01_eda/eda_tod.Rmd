@@ -83,7 +83,7 @@ hr_meandepth <- hourly_shark_data %>%
   scale_fill_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
   scale_y_reverse() +
   #geom_vline(xintercept = c(6, 18), colour = "grey30", lwd = 0.3) +
-  theme_minimal() +
+  theme_bjc() +
   scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
   facet_wrap(~ Season, ncol = 4) +
   theme(legend.position = "none",
@@ -104,7 +104,7 @@ hourly_shark_data %>%
   geom_point(aes(x = hour, y = max_depth), pch = 21, fill = "grey", colour = "black") +
   scale_y_reverse() +
   geom_vline(xintercept = c(6, 18)) +
-  theme_bw() +
+  theme_bjc() +
   facet_wrap(~ Season, ncol = 4)
 ```
 
@@ -120,13 +120,14 @@ hr_sddepth <- hourly_shark_data %>%
   geom_point(aes(x = hour, y = sd_depth, fill = Season), pch = 21, alpha = 0.5) +
   scale_fill_manual(values = c("dodgerblue","red", "orange", "darkblue")) +
   #scale_y_reverse() +
-  theme_minimal() +
+  theme_bjc() +
   facet_wrap(~ Season, ncol = 4) +
   scale_x_continuous(limits = c(-1, 24), breaks = c(0, 6, 12, 18, 24)) +
   theme(legend.position = "none",
         strip.text = element_blank()) +
   ylab("Std. dev.\n(m)") + 
   xlab("Time of day")
+hr_sddepth
 ```
 
 
@@ -176,6 +177,12 @@ diurnal_shark_data %>%
   geom_errorbar(aes(ymin = mean_depth-sd_depth, ymax = mean_depth+sd_depth, x = tod), width = 0.1, colour = "black") +
   scale_y_reverse() +
   geom_vline(xintercept = c(6, 18)) +
-  theme_bw() +
+  theme_bjc() +
   facet_wrap(~ Season, ncol = 4)
 ```
+
+
+```{r}
+# END #
+```
+
