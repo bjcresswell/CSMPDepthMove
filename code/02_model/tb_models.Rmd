@@ -1,0 +1,691 @@
+---
+title: "Shark daily internal temperature ~ SST models"
+author: "Ben Cresswell"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+ html_document:
+    code_folding: show
+    collapse: no
+    df_print: paged
+    fig_caption: yes
+    fig_height: 6
+    fig_width: 10
+    highlight: textmate
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	include = TRUE,
+	message = FALSE,
+	warning = FALSE)
+#rm(list=ls()) # Clear out environment if necessary
+
+```
+
+
+```{r include=FALSE}
+source("code/packages.R")
+source("code/extras.R")
+```
+
+# Load data
+```{r}
+load(file = "data/Rdata/shark_daily_td.Rdata")
+shark_daily_td
+```
+
+
+# We need models for 
+
+1. Max daily temp ~ SST    - Gaussian GLM
+2. Mean daily temp ~ SST   - Gaussian GAM
+3. Min daily temp ~ SST    - Gaussian GAM
+4. Daily temp SD ~ SST     - Gaussian GAM on daily temp diff or Gamma GAM on daily SD
+
+```{r}
+## Check distributions so we know how to model
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_max_temp))
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_mean_temp))
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_min_temp))
+```
+
+All look approximately normal. We'll see how the modelling pans out
+
+# First we'll make a grid of SST values to use for plotting all models at the end
+```{r}
+SSTgrid <- shark_daily_td %>% 
+  with(list(SST = seq_range(SST, n = 100)))
+```
+
+
+##### Model 1: Daily max temp ~ SST #####
+
+## Model formula - gaussian best fit. Has lower AIC score than GAM but the wiggly term non significant for GAM so going with GLM
+```{r}
+mod1a <- glm(daily_max_temp ~ SST, data = shark_daily_td, family = gaussian) # glm() fits REML = FALSE by default
+mod1b <- gam(daily_max_temp ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, family = gaussian, method = "ML")
+```
+
+## Model validation
+```{r}
+# Dharma resids
+mod1a %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod1a %>% performance::check_outliers()
+mod1a %>% performance::r2()
+
+mod1b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod1b %>% performance::check_outliers()
+mod1b %>% performance::r2()
+
+AIC(mod1a, mod1b)
+```
+
+Residuals look ok for both models. AIC better for GAM but after plotting I don't think it adds anything to the interpretation
+
+```{r}
+mod1 <- mod1a
+```
+
+
+## Results
+Almost 1:1 relationship between SST and max internal body temperature 
+```{r}
+(mod1results <- mod1 %>% tidy(conf.int=TRUE))
+mod1 %>%  summary()
+```
+A near enough 1:1 ratio of SST to max daily Tb. There is some uncertainty in the intercept (95% CI -0.02 - 1.3), but that's because it's way outside of our range of data (what would a shark's actual Tb be at 0°C SST? It's a pointless exercise, at least for a tropical organism)
+
+
+## Plot results
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod1_plot <- 
+  mod1 %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  ggplot(aes(y = emmean, x = SST)) +
+  geom_point(data=shark_daily_td,  aes(y=daily_max_temp, x = SST), fill = "red", col = "black", alpha = 0.4, pch = 21) +
+  geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.7) +
+  geom_line(colour = "black") +
+ # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  #ylab("Daily max temp (°C)") + 
+  ylab(expression(paste("Daily max", italic(" T"),""[b]* " (°C)"))) + 
+  xlab("SST (°C)") +
+  #scale_y_continuous(limits = c(25.4, 30.9), n.breaks = 6) +
+  scale_x_continuous(limits = c(25.6, 30.6), n.breaks = 6) +
+  theme_bjc() +
+  theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
+
+mod1_plot
+```
+
+Shows the 1:1 ratio nicely
+
+# Save
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod1_plot, file = "output/mod1_plot.pdf", 
+       width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+## Add in time-series data
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+#(daily_max_temp_model_plot <- ggarrange(shark_daily_maxtemp_plot, mod1_plot, ncol = 2, widths = c(2,1)))
+```
+
+## And save that
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+#ggsave(daily_max_temp_model_plot, file = "output/daily_max_temp_model_plot.pdf", 
+#       width = 180, height = 60, units = "mm", dpi = 300)
+```
+
+
+##### Model 2: Mean daily temp ~ SST #####
+
+## Model formula 
+```{r}
+mod2a <- glm(daily_mean_temp ~ SST, data = shark_daily_td, family = gaussian)
+mod2b <- gam(daily_mean_temp ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, family = gaussian, method = "ML")
+```
+
+## Model validation
+```{r}
+# Dharma resids
+mod2a %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod2a %>% performance::check_outliers()
+mod2a %>% performance::r2()
+
+mod2b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod2b %>% performance::check_outliers()
+mod2b %>% performance::r2()
+
+AIC(mod2a, mod2b)
+```
+GAM better AIC score, will take forward and see what it adds to the output
+
+```{r}
+mod2 <- mod2b
+```
+
+
+## Results
+```{r}
+summary(mod2)
+```
+
+## Plot results
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod2_plot <- 
+ mod2 %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  ggplot(aes(y = emmean, x = SST)) +
+  geom_point(data=shark_daily_td,  aes(y=daily_mean_temp, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
+  geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
+  geom_line() +
+  # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+  #ylab("Daily mean temp (°C)") + 
+  ylab(expression(paste("Daily mean", italic(" T"),""[b]* " (°C)"))) + 
+  xlab("SST (°C)") +
+  #scale_y_continuous(limits = c(25.4, 30.9), n.breaks = 6) +
+  scale_x_continuous(limits = c(25.6, 30.6), n.breaks = 6) +
+  theme_bjc() +
+  theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
+
+mod2_plot
+```
+
+## Results
+```{r}
+# Manually
+mod2 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 30, 29, 28, 27, 26, 25.5))), type = "response") %>% 
+  regrid() %>% 
+ # pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Contrast across SST range
+mod2 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 25.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Between 25.5 and 26.5
+mod2 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(26.5, 25.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Between 29.5 and 30.5
+mod2 %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 29.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+```
+
+1°C increase in SST at low range (25.5-26.5) results in 1.2°C increase in mean Tb, while
+1°C increase in SST at high range (29.5-30.5) results in a 0.4°C increase in mean Tb, difference of 1/3.
+
+
+
+# Save
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod2_plot, file = "output/mod2_plot.pdf", width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+## Add to time-series data if required
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+(daily_mean_temp_model_plot <- ggarrange(shark_daily_meantemp_plot, mod2_plot, ncol = 2, widths = c(2,1)))
+```
+
+## And save
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+ggsave(daily_mean_temp_model_plot, file = "output/daily_mean_temp_model_plot.pdf", 
+       width = 180, height = 60, units = "mm", dpi = 300)
+```
+
+
+##### Model 3: Min Daily Temp ~ SST #####
+
+## Model formula - gaussian best fit
+```{r}
+mod3a <- glm(daily_min_temp ~ SST, data = shark_daily_td, family = gaussian)
+mod3b <- gam(daily_min_temp ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, family = gaussian, method = "ML")
+```
+
+## Model validation
+```{r  fig.width = 180/25.4, fig.height = 100/25.4}
+# Dharma resids
+mod3a %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod3a %>% performance::check_outliers()
+mod3a %>% performance::r2()
+
+mod3b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod3b %>% performance::check_outliers()
+mod3b %>% performance::r2()
+
+AIC(mod3a, mod3b)
+```
+So again GAM looks better
+
+```{r}
+mod3 <- mod3b
+```
+
+
+## Results
+```{r}
+#(mod3results <- mod3 %>% tidy(conf.int=TRUE)) # Use this if going with GLM instead of GAM
+mod3 %>% summary()
+```
+
+edf > 1 so we have wiggliness and p<0.05 so it's significant
+
+
+## Plot results
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod3_plot <- 
+mod3 %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  ggplot(aes(y = emmean, x = SST)) +
+  geom_point(data=shark_daily_td,  aes(y=daily_min_temp, x = SST), fill = "blue", col = "black", alpha = 0.4, pch = 21) +
+  geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, fill = "blue", alpha=0.3) +
+  geom_line() +
+  theme_bjc() +
+ # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+ # ylab("Daily min temp (°C)") + 
+  ylab(expression(paste("Daily min", italic(" T"),""[b]* " (°C)"))) + 
+  xlab("SST (°C)") +
+  #scale_y_continuous(limits = c(25, 30.5), n.breaks = 6) +
+  scale_x_continuous(limits = c(25.6, 30.6), n.breaks = 6) +
+  theme_bjc() +
+  theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
+
+mod3_plot
+```
+
+## Results
+```{r}
+mod3a %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  summarise(min = min(emmean),
+            max = max(emmean))
+```
+
+# Save
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod3_plot, file = "output/mod3_plot.pdf", 
+       width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+## Add in time-series data
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+(daily_min_temp_model_plot <- ggarrange(shark_daily_mintemp_plot, mod3_plot, ncol = 2, widths = c(2,1)))
+```
+
+## And save that
+```{r  fig.width = 180/25.4, fig.height = 60/25.4}
+ggsave(daily_min_temp_model_plot, file = "output/daily_min_temp_model_plot.pdf", 
+       width = 180, height = 60, units = "mm", dpi = 300)
+```
+
+
+
+##### Model 4: Daily Tb variation ~ SST #####
+
+## Model formula
+We can use either daily SD in temperature or we can use diff between max and min - the latter probably more interpretable but we'll try modelling both
+We know from EDA that we'll almost certainly need a GAM for this. But what error family?
+
+```{r  fig.width = 150/25.4, fig.height = 69/25.4}
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_temp_sd))
+shark_daily_td %>% ggplot() + geom_histogram(aes(x = daily_temp_diff))
+```
+SD looks right skewed, maybe even bimodal? Imagining a Gamma or a Tweedie might work. 
+temp_diff looks normally distributed
+
+# Tb variation Pt I
+
+# SD
+```{r}
+mod4a <- gam(daily_temp_sd ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, method = "ML")
+mod4b <- gam(daily_temp_sd ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, family = tw, method = "ML")
+mod4c <- gam(daily_temp_sd ~ s(SST, bs = "cs", k = 4), data = shark_daily_td, family = Gamma, method = "ML")
+```
+
+## Model validation
+```{r  fig.width = 180/25.4, fig.height = 90/25.4}
+# Dharma resids
+# Gaussian
+mod4a %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod4a %>% performance::check_outliers()
+mod4a %>% gam.check()
+mod4a %>% performance::r2()
+
+# Tweedie
+mod4b %>% simulateResiduals(plot = TRUE) # Look ok apart from some quantile deviation
+mod4b %>% performance::check_outliers()
+mod4b %>% gam.check()
+mod4b %>% performance::r2()
+
+# Gamma
+mod4c %>% simulateResiduals(plot = TRUE)
+mod4c %>% performance::check_outliers()
+mod4c %>% gam.check()
+mod4c %>% performance::r2()
+```
+
+All a bit off, but the Gamma looking best
+
+## Check information criteria
+```{r}
+AIC(mod4a, mod4b, mod4c)
+```
+
+Gamma model best, so we'll assign this as the model for the temp SD
+```{r}
+mod4_sd <- mod4c
+```
+
+```{r}
+mod4_sd %>%  summary()
+```
+
+
+# Make plot
+```{r fig.height = 70/25.4, fig.width = 70/25.4}
+mod4_sd_plot <- 
+  mod4_sd %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+    ggplot(aes(y = response, x = SST)) +
+    geom_point(data=shark_daily_td,  aes(y=daily_temp_sd, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
+    geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.7) +
+    geom_line() +
+    # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+   # ylab("Std. dev. daily temp (°C)") + 
+    ylab(expression(paste("Daily mean ", italic("T"),""[b]* " S.D. (°C)"))) + 
+    xlab("SST (°C)") +
+    scale_x_continuous(limits = c(25.6, 30.6), n.breaks = 6) +
+    theme_bjc() +
+    theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
+
+mod4_sd_plot
+```
+
+## Results
+```{r}
+mod4_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 25.5)))) %>% 
+  regrid() %>% 
+  #pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Rates of change
+# Low range: Between 25.5 and 26.5
+mod4_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(26.5, 25.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Mid range: Between 28 and 29
+mod4_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(29, 28))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# High range: Between 29.5 and 30.5
+mod4_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 29.5))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+# Extreme high: Between 30-31
+mod4_sd %>% 
+  emmeans(~SST, at = shark_daily_td %>% 
+            with(list(SST = c(30.5, 30))), type = "response") %>% 
+  regrid() %>% 
+  pairs() %>% 
+  confint() %>% 
+  as_tibble()
+
+
+```
+
+
+
+
+
+
+# Save
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod4_sd_plot, file = "output/mod4_sd_plot.pdf", 
+       width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+# Tb variation Pt II
+
+# Fit model using temp_diff
+```{r  fig.width = 180/25.4, fig.height = 90/25.4}
+mod4d <- glm(daily_temp_diff ~ SST, data = shark_daily_td)
+mod4e <- gam(daily_temp_diff ~ s(SST, bs = "cs", k = 3), data = shark_daily_td, method = "ML")
+mod4d %>% simulateResiduals(plot = TRUE)
+mod4e %>% simulateResiduals(plot = TRUE)
+
+AIC(mod4d, mod4e)
+```
+
+The GAM is a better model
+
+```{r}
+mod4_diff <- mod4e
+```
+
+
+## Results
+```{r}
+#(mod4_diff_results <- mod4_diff %>% tidy(conf.int=TRUE))
+mod4_diff %>% summary()
+mod4_diff %>% performance::r2()
+```
+
+## Plot results
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod4_diff_plot <- 
+  mod4_diff %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+    ggplot(aes(y = emmean, x = SST)) +
+    geom_ribbon(aes(ymin=lower.CL, ymax=upper.CL), color=NA, alpha=0.3) +
+    geom_line() +
+    geom_point(data=shark_daily_td,  aes(y=daily_temp_diff, x = SST), fill = "grey40", col = "black", alpha = 0.4, pch = 21) +
+    # theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 1)) +
+   # ylab("Std. dev. daily temp (°C)") + 
+    ylab(expression(paste("Daily ", italic("T"),""[b]* " variation (°C)"))) + 
+    scale_x_continuous(limits = c(25.5, 30.6), n.breaks = 6) +
+    xlab("SST (°C)") +
+    theme_bjc() +
+    theme(#plot.background = element_rect(colour = "black", linewidth = 1),
+        axis.title = element_text(size = 9, colour = "black"),
+        axis.text = element_text(size = 9, colour = "black"))
+
+mod4_diff_plot
+```
+
+# Save
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+ggsave(mod4_diff_plot, file = "output/mod4_diff_plot.pdf", 
+       width = 56, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
+```
+
+
+
+# Summary info
+
+## Model 1 - Max Tb ~ SST.  
+Gaussian GLM. R2:0.95
+1:1 ratio of SST to Max Tb. Not surprising!
+GAM not required/used
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod1
+mod1results
+performance::r2(mod1)
+mod1_plot
+```
+
+
+## Model 2: Mean Tb ~ SST. This is probably the most interesting and complex trend to pull apart
+Summary info: Gaussian GAM  with significant smooth terms (wiggliness!)
+R2 0.95
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+performance::r2(mod2)
+mod2 %>% summary()
+#mod2results
+```
+
+# Plot for interpretations
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod2_plot
+```
+
+# Between 26 and c. 29°C it's a pretty linear relationship
+An increase in Tb of around 0.85°C for every 1°C increase in SST (95% CI [0.83 - 0.87])
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod2 %>% emmeans(~SST, at = shark_daily_td %>% with(list(SST = c(27.5, 28.5))), type = "response") %>% 
+  pairs(reverse = TRUE) %>% 
+  confint()
+```
+
+
+# However, it doesn't keep going up - at some point these animals can stop their mean daily Tb going up.
+```{r}
+mod2 %>% emmeans(~SST, at = shark_daily_td %>% with(list(SST = c(26, 27, 28, 29, 30, 31)))) 
+```
+There is a predicted plateau somewhere around 30-31 °C SST
+
+
+We can also use the model predictions to investigate further -> the highest SST recorded in the study was 30.53 so if we look at the predicted increase in Tb for the upper 1°C
+```{r}
+mod2 %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  filter(SST > 29.53) %>% 
+  summarise(min = min(emmean),
+            max = max(emmean)) %>% 
+  mutate(diff = max - min)
+
+# OR to view all the data for this chunk of the model:
+mod2 %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>%   filter(SST > 29.53) %>% 
+  arrange(SST)
+
+```
+
+So the increase in mean Tb for the top 1°C SST was just 0.35°C AND Tb begins to reach asymptote at around 29°C even when SST at 30.5°C
+
+
+
+
+## Model 3: Min Tb ~ SST
+Gaussian GAM with significant smooth term
+Lots of noise (R2:0.12, Dev explained: 12%)
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+summary(mod3)
+#mod3results
+performance::r2(mod3)
+```
+# Plot to guide interpretation
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod3_plot
+```
+
+Daily minimum Tb consistently around 24.5 - 25.5°C. However, when taken together with the depth results, it's clear that the reason for this different according to SST. During times of high SSTs minimum temperatures are achieved through deep dives. During the winter/colder months, these organisms have more options and can access these sorts of temperatures anywhere in the water column.
+
+
+
+
+
+## Model 4
+With this model we are trying to get at the variation in daily Tb. We looked at using SD and also in the diff between max and min Tb as the response variables
+
+# Temp diff
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod4_diff
+mod4_diff %>% summary
+performance::r2(mod4_diff)
+```
+
+
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod4_diff_plot
+```
+
+
+
+
+
+# SD
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod4_sd %>% summary
+performance::r2(mod4_sd)
+```
+
+
+```{r fig.height = 56/25.4, fig.width = 56/25.4}
+mod4_sd_plot
+```
+
+
+```{r}
+# ENDS
+```
+
