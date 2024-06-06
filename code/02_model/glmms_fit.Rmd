@@ -168,6 +168,6 @@ mod2 %>% ggemmeans(~ TL*SST*Sex) %>% plot
 
 
 ```{r}
-# END - see glmms_results.Rmd next
+# END - see results_glmm2 for the SST ~ Sex * TL
 ```
 
