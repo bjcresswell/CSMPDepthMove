@@ -77,7 +77,7 @@ mod1_grid <- shark_individual_daily_td %>%
 ```{r}
 # New data  
 newdata_mod1 <- mod1 %>% 
-  emmeans(~Season|SST, at = season_SST_grid) %>% 
+  emmeans(~Season|SST, at = mod1_grid) %>% 
   regrid() %>% 
   as_tibble()
 ```
@@ -131,7 +131,7 @@ newdata_mod1 %>%
   #scale_shape_manual(values = c(21, 22, 23)) +
   scale_fill_manual(values = c("seagreen","red", "orange", "darkblue")) +
   scale_colour_manual(values = c("seagreen","red", "orange", "darkblue")) +
-  theme_minimal() +
+  theme_bjc() +
   scale_y_continuous(limits = c(10, 115), breaks = c(0, 25, 50, 75, 100),  expand = c(0,0)) +
   scale_x_continuous(limits = c(25.65, 30.55), expand = c(0,0)) +
   theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 0.5)) +
@@ -163,7 +163,7 @@ seasonSST_plot
   #scale_shape_manual(values = c(21, 22, 23)) +
   scale_fill_manual(values = c("seagreen","red", "orange", "darkblue")) +
   scale_colour_manual(values = c("seagreen","red", "orange", "darkblue")) +
-  theme_minimal() +
+  theme_bjc() +
   scale_y_continuous(limits = c(10, 115), breaks = c(0, 25, 50, 75, 100),  expand = c(0,0)) +
   scale_x_continuous(limits = c(25.65, 30.55), expand = c(0,0)) +
   theme(plot.background = element_rect(fill = "transparent", colour = "black", linewidth = 0.5)) +

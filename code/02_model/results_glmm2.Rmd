@@ -52,12 +52,18 @@ Male    130-171 cm
 
 We'll use these values to set sensible limits and contrasts on our model data.
 
-# Firt load model and data
+# First load model and data
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 sourceRmd("code/02_model/glmms_fit.Rmd")
 ```
 
 # Interaction: TL * SST 
+
+
+```{r}
+summary(mod2)
+```
+
 
 # Create reference grid
 ```{r}
@@ -121,7 +127,7 @@ newdata_mod2 %>%
         #legend.text = element_text(size = 8)) +
   #geom_text(data = Seasons, aes(x=26, y=100, label = Season), hjust = 0.2, vjust = -0.2, size = 3) +
   facet_wrap(~Sex, ncol = 1, strip.position = "right")
-TL_sex_SST_fig
+sexTL_SST_fig
 ```
 
 
@@ -179,7 +185,7 @@ shark_individual_daily_td  %$%
 
 
 ```{r  fig.width = 100/25.4, fig.height = 60/25.4}
-TL_sex_fig <- 
+#TL_sex_fig <- 
   newdata_mod2 %>% 
   ggplot() +
   geom_point(data = shark_individual_daily_td, aes(x = T.L., y = daily_movement, colour = Sex, group = Sex), alpha = 0.01, pch = 15, 
@@ -232,8 +238,7 @@ female <- readPNG("data/female.png") %>% grid::rasterGrob(interpolate = TRUE)
 ```{r  fig.width = 90/25.4, fig.height = 110/25.4}
 TL_sex_SST_figcombined <- 
   cowplot::plot_grid(TL_sex_SST_fig, TL_sex_fig, nrow = 2, rel_heights = c(1,0.7), labels = c('A', 'B'), hjust = -1, label_size = 9, align = "v") +
-  theme(plot.background = element_rect(color = "black", linewidth = 1),
-        panel.background = element_rect(color = "black", linewidth = 1)) +
+  theme(plot.background = element_rect(color = "black", linewidth = 0.5)) +
   annotation_custom(male, xmin = 0.18, xmax = 0.25, ymin = 0.31) +
   annotation_custom(female, xmin = 0.18, xmax = 0.24, ymin = 0.83)
 TL_sex_SST_figcombined
@@ -274,7 +279,9 @@ emmeans(~TL|Sex, at = mod2_grid) %>%
 #sex_trends <- 
   mod2 %>% 
   emtrends(specs = pairwise~"Sex", var = "SST", infer = TRUE) %>% 
-  regrid()
+  regrid() %>% 
+  pairs() %>% 
+  confint()
 
 sex_trendsum <- summary(sex_trends, infer = TRUE)
 

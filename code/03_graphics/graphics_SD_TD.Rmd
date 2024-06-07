@@ -37,16 +37,37 @@ getwd()
 
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
-sourceRmd("code/02_model/grouped_models_depth.Rmd")
-sourceRmd("code/02_model/grouped_models_temp.Rmd")
+sourceRmd('code/02_model/dep_models.Rmd')
+sourceRmd('code/02_model/tb_models.Rmd')
 ```
 
 
 # Model results
+
+## Depth
+
+```{r}
+mod8_sd %>%  summary()
+```
+
+
+```{r}
+mod8_sd %>% 
+  emmeans(~SST, at = SSTgrid) %>% 
+  regrid() %>% 
+  as_tibble() %>% 
+  summarise(min = min(response),
+            max = max(response))
+```
+
+
+
+
+
 ## Cowplot
-```{r fig.height = 62/25.4, fig.width = 124/25.4}
-std_dev_model_fig <- cowplot::plot_grid(mod2b_plot, mod7_plot, nrow = 1, labels = c('A', 'B'), label_size = 9, align = "h") +
-  theme(plot.background = element_rect(color = "black"))
+```{r fig.height = 70/25.4, fig.width = 140/25.4}
+std_dev_model_fig <- cowplot::plot_grid(mod8_sd_plot, mod4_sd_plot, nrow = 1, labels = c('A', 'B'), label_size = 9, align = "h") +
+  theme(panel.border = element_rect(color = "black", fill = "transparent", linewidth = 1))
 
 std_dev_model_fig
 ```
@@ -54,7 +75,8 @@ std_dev_model_fig
 
 ## Save
 ```{r}
-ggsave(filename = "output/std_dev_model_fig.pdf", plot = std_dev_model_fig, width = 124, height = 62, device = cairo_pdf, units = "mm", dpi = 300)
+ggsave(filename = "output/std_dev_model_fig.pdf", plot = std_dev_model_fig, width = 140, height = 70, device = cairo_pdf, units = "mm", dpi = 300)
+ggsave(filename = "output/std_dev_model_fig.jpg", plot = std_dev_model_fig, width = 140, height = 70, device = "jpeg", units = "mm", dpi = 300)
 ```
 
 

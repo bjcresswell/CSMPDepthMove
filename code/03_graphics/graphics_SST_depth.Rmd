@@ -44,7 +44,9 @@ source("code/packages.R")
 # GET PLOT FROM gam_temptime.Rmd
 sourceRmd('code/02_model/gam_depthtime.Rmd')
 # View
-shark_daily_depth_plot
+shark_daily_depths_plot
+# Note slightly different to:
+shark_daily_depth_plot # Not formally modelled, just the gam smooth in ggplot
 ```
 # Combine with SST plot
 ```{r fig.width = 170/25.4, fig.height = 30/25.4}
@@ -59,24 +61,29 @@ SST_plot_plain <-
         axis.text.y = element_text(size = 9, colour = "black"),
         axis.text.x = element_blank(),
         axis.title.x = element_blank(),
-        axis.ticks.x = element_blank())
+        axis.ticks.x = element_blank()) 
         #panel.background = element_rect(fill = "transparent", colour = "black", linewidth = 1),
         #panel.border = element_rect(fill = "transparent", colour = "black", linewidth = 1),
 
 SST_plot_plain
+ggsave(filename = "output/SST_plot_plain.pdf", plot = SST_plot_plain, width = 170, height = 30, device = cairo_pdf, units = "mm", dpi = 300)
 ```
 
 ```{r fig.width = 170/25.4, fig.height = 80/25.4}
-shark_dep_timeseries_fig <- cowplot::plot_grid(SST_plot_plain, shark_daily_depth_plot, nrow = 2, labels = c('A'), label_size = 9, label_y = 1,
+shark_dep_timeseries_fig <- cowplot::plot_grid(SST_plot_plain, shark_daily_depths_plot, nrow = 2, labels = c('A'), label_size = 9, label_y = 1,
                                                rel_heights = c(0.6, 1.5), align = "v") +
-    theme(plot.background = element_rect(color = "black")) 
+  annotate(geom = "text", label = "SST", y = 0.94, x = 0.09, colour = "black", size = 3.2, hjust = 0) +
+  annotate(geom = "text", label = "Min depth", y = 0.69, x = 0.09, colour = "skyblue", size = 3.2, fontface = "bold", hjust = 0) +
+  annotate(geom = "text", label = "Mean depth",  y = 0.56, x = 0.09, colour = "dodgerblue", size = 3.2, fontface = "bold", hjust = 0) +
+  annotate(geom = "text", label = "Max depth",  y = 0.27, x = 0.09, colour = "midnightblue", size = 3.2, fontface = "bold", hjust = 0) +
+      theme(panel.border = element_rect(color = "black", fill = "transparent", linewidth = 1))
 
 shark_dep_timeseries_fig
 ```
 
 
 ```{r}
-ggsave(filename = "output/shark_dep_timeseries_fig.pdf", plot = shark_dep_timeseries_fig, width = 170, height = 100, device = cairo_pdf, units = "mm", dpi = 300)
+ggsave(filename = "output/shark_dep_timeseries_fig.pdf", plot = shark_dep_timeseries_fig, width = 170, height = 80, device = cairo_pdf, units = "mm", dpi = 300)
 ```
 
 
@@ -84,18 +91,36 @@ ggsave(filename = "output/shark_dep_timeseries_fig.pdf", plot = shark_dep_timese
 
 # Source models
 ```{r}
-sourceRmd('code/02_model/grouped_models_depth.Rmd')
+sourceRmd('code/02_model/dep_models.Rmd')
 ```
 
-## Cowplot
+## Cowplot - all 4 grouped models
 ```{r fig.height = 56/25.4, fig.width = 170/25.4}
-shark_dep_model_fig <- cowplot::plot_grid(mod4_plot, mod5_plot, mod6_plot, mod7_plot, nrow = 1, labels = c('B', 'C', 'D', 'E'), rel_widths = c(1,1,1,1.25), label_size = 9, align = "h") +
-  theme(plot.background = element_rect(color = "black")) +
-  annotate("text", x = 0.08, y = 0.9, label = expression("R"^2*"=0.47"), hjust = 0, size = 2.5) +
-  annotate("text", x = 0.31, y = 0.9, label = expression("R"^2*"=0.71"), hjust = 0, size = 2.5) +
-  annotate("text", x = 0.54, y = 0.9, label = expression("R"^2*"=0.001"), hjust = 0, size = 2.5) +
-  annotate("text", x = 0.78, y = 0.9, label = expression("R"^2*"=0.75"), hjust = 0, size = 2.5)
+#shark_dep_model_fig <- cowplot::plot_grid(mod4_plot, mod5_plot, mod6_plot, mod7_plot, nrow = 1, labels = c('B', 'C', 'D', 'E'), rel_widths = c(1,1,1,1.25), label_size = 9, align = "h") +
+#  theme(plot.background = element_rect(color = "black")) +
+#  annotate("text", x = 0.08, y = 0.9, label = expression("R"^2*"=0.47"), hjust = 0, size = 2.5) +
+#  annotate("text", x = 0.31, y = 0.9, label = expression("R"^2*"=0.71"), hjust = 0, size = 2.5) +
+#  annotate("text", x = 0.54, y = 0.9, label = expression("R"^2*"=0.001"), hjust = 0, size = 2.5) +
+#  annotate("text", x = 0.78, y = 0.9, label = expression("R"^2*"=0.75"), hjust = 0, size = 2.5)
+#shark_dep_model_fig
+```
+
+## Cowplot - with the main 3 (Max, mean and min)
+```{r fig.height = 56/25.4, fig.width = 170/25.4}
+shark_dep_model_fig <- 
+  cowplot::plot_grid(mod5_plot, mod6_plot, mod7_plot,
+                     nrow = 1, labels = c('B', 'C', 'D'), rel_widths = c(1,1,1), label_size = 9, align = "h") +
+  annotate("text", x = 0.085, y = 0.9, label = expression("R"^2*": 0.47"), hjust = 0, size = 3) +
+  annotate("text", x = 0.41, y = 0.87, label = "Dev expl: \n70.7%", hjust = 0, size = 3) +
+  annotate("text", x = 0.73, y = 0.9, label = expression("R"^2*": 0.001"), hjust = 0, size = 3) 
+
 shark_dep_model_fig
+```
+
+
+# Save
+```{r}
+ggsave(filename = "output/shark_dep_model_fig.pdf", plot = shark_dep_model_fig, width = 165, height = 56, device = cairo_pdf, units = "mm", dpi = 300)
 ```
 
 
@@ -103,7 +128,7 @@ shark_dep_model_fig
 ```{r fig.width = 170/25.4, fig.height = 130/25.4}
 shark_dep_model_fig_final <- 
   cowplot::plot_grid(shark_dep_timeseries_fig, shark_dep_model_fig, nrow = 2, rel_heights = c(2,1.4)) +
-  theme(plot.background = element_rect(color = "black")) 
+  theme(panel.border = element_rect(color = "black", fill = "transparent", linewidth = 1))
   
 shark_dep_model_fig_final
 ```
@@ -111,9 +136,8 @@ shark_dep_model_fig_final
 
 ## Save
 ```{r}
-ggsave(filename = "output/shark_dep_model_fig_final.pdf", plot = shark_dep_model_fig_final, width = 170, height = 130, device = cairo_pdf, units = "mm", dpi = 300)
-ggsave(filename = "output/shark_dep_model_fig_final.jpg", plot = shark_dep_model_fig_final, width = 170, height = 130, device = "jpeg", units = "mm", dpi = 300)
-
+ggsave(filename = "output/shark_dep_model_fig_final.pdf", plot = shark_dep_model_fig_final, width = 165, height = 130, device = cairo_pdf, units = "mm", dpi = 300)
+ggsave(filename = "output/shark_dep_model_fig_final.jpg", plot = shark_dep_model_fig_final, width = 165, height = 130, device = "jpeg", units = "mm", dpi = 300)
 ```
 
 
